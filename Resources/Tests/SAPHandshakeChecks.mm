@@ -7,7 +7,9 @@
 static NSDictionary *FetchPlist(NSURLSession *session, NSURL *url, NSDictionary *body = nil) {
     NSMutableURLRequest *request = [NSMutableURLRequest requestWithURL:url];
     [request setValue:@"Configurator/2.17 (Macintosh; OS X 15.2; 24C5089c) AppleWebKit/0620.1.16.11.6" forHTTPHeaderField:@"User-Agent"];
-    [request setValue:@"application/xml" forHTTPHeaderField:@"Accept"];
+    // Mirror production: setup endpoints choose their own plist response type.
+    if ([url.host isEqualToString:@"init.itunes.apple.com"])
+        [request setValue:@"application/xml" forHTTPHeaderField:@"Accept"];
     if (body) {
         request.HTTPMethod = @"POST";
         [request setValue:@"application/x-apple-plist" forHTTPHeaderField:@"Content-Type"];
