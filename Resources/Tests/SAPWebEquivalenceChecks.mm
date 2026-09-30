@@ -1,18 +1,43 @@
 #import <Foundation/Foundation.h>
 #include "SapMachine.h"
+#include <unicorn/unicorn.h>
 #include <iostream>
 #include <stdexcept>
 
 // Standalone diagnostic binary only; replay controlled Web fixture entropy.
 static NSArray *events;
 static NSUInteger cursor;
+static NSUInteger timestampRemaining;
+static uint64_t timestampCount;
 static uint64_t NextEvent(NSString *kind) {
+    if ([kind isEqual:@"tsc"] && timestampRemaining) {
+        --timestampRemaining;
+        return 1234567890 + timestampCount++ * 10000;
+    }
     if (cursor >= events.count || ![events[cursor][0] isEqual:kind])
         throw std::runtime_error("Web/native entropy call sequence differs");
+    if ([kind isEqual:@"tsc"]) {
+        timestampRemaining = [events[cursor++][1] unsignedLongLongValue] - 1;
+        return 1234567890 + timestampCount++ * 10000;
+    }
     return [events[cursor++][1] unsignedLongLongValue];
 }
 uint32_t SAPReplayRandom() { return static_cast<uint32_t>(NextEvent(@"random")); }
 int64_t SAPReplayTime() { return static_cast<int64_t>(NextEvent(@"time")); }
+bool SAPReplayTimestamp(uc_engine *engine, void *) {
+    uint64_t value = NextEvent(@"tsc"), zero = 0;
+    if (uc_reg_write(engine, UC_X86_REG_RAX, &value) != UC_ERR_OK ||
+        uc_reg_write(engine, UC_X86_REG_RDX, &zero) != UC_ERR_OK)
+        throw std::runtime_error("Cannot control fixture timestamp");
+    return true;
+}
+bool SAPReplayTimestampP(uc_engine *engine, void *data) {
+    SAPReplayTimestamp(engine, data);
+    uint64_t zero = 0;
+    if (uc_reg_write(engine, UC_X86_REG_RCX, &zero) != UC_ERR_OK)
+        throw std::runtime_error("Cannot control fixture timestamp auxiliary register");
+    return true;
+}
 
 static std::vector<uint8_t> Decode(NSString *value) {
     NSData *data = [[NSData alloc] initWithBase64EncodedString:value options:0];
@@ -54,8 +79,7 @@ int main(int argc, const char *argv[]) {
             auto body = Decode(fixture[@"body"]);
             for (NSString *signature in fixture[@"signatures"])
                 Match(machine->Sign(context, body), Decode(signature), "signature");
-            if (cursor != events.count) throw std::runtime_error("Unused Web entropy events");
-            machine->Teardown(context);
+            if (cursor != events.count || timestampRemaining) throw std::runtime_error("Unused Web entropy events");
             std::cout << "Web/native SAP equivalence passed: public handshake and synthetic body only." << std::endl;
             return 0;
         } catch (const std::exception& error) {
