@@ -1,6 +1,198 @@
 {
   "sourceLanguage" : "en",
   "strings" : {
+      "Apple rejected the login (code: %@).": {
+        "localizations": {
+          "en": {
+            "stringUnit": {
+              "state": "translated",
+              "value": "Apple rejected the login (code: %@)."
+            }
+          },
+          "zh-Hans": {
+            "stringUnit": {
+              "state": "translated",
+              "value": "Apple 拒绝了登录请求（错误码：%@）。"
+            }
+          }
+        }
+      },
+      "Apple returned an invalid login redirect. No credentials were forwarded.": {
+        "localizations": {
+          "zh-Hans": {
+            "stringUnit": {
+              "state": "translated",
+              "value": "Apple 返回的登录重定向无效，账户信息未被转发。"
+            }
+          },
+          "en": {
+            "stringUnit": {
+              "state": "translated",
+              "value": "Apple returned an invalid login redirect. No credentials were forwarded."
+            }
+          }
+        }
+      },
+      "Apple returned an unsupported login configuration. Update the app and try again.": {
+        "localizations": {
+          "zh-Hans": {
+            "stringUnit": {
+              "state": "translated",
+              "value": "Apple 返回了暂不支持的登录配置，请更新 App 后重试。"
+            }
+          },
+          "en": {
+            "stringUnit": {
+              "state": "translated",
+              "value": "Apple returned an unsupported login configuration. Update the app and try again."
+            }
+          }
+        }
+      },
+      "Apple's login service exceeded the retry limit. Try again later.": {
+        "localizations": {
+          "zh-Hans": {
+            "stringUnit": {
+              "state": "translated",
+              "value": "Apple 登录服务超出重试次数，请稍后重试。"
+            }
+          },
+          "en": {
+            "stringUnit": {
+              "state": "translated",
+              "value": "Apple's login service exceeded the retry limit. Try again later."
+            }
+          }
+        }
+      },
+      "Apple's login service returned an unexpected response (HTTP %lld). This response does not indicate an incorrect password or a missing verification code. Try again later.": {
+        "localizations": {
+          "zh-Hans": {
+            "stringUnit": {
+              "state": "translated",
+              "value": "Apple 登录服务返回异常响应（HTTP %lld）。该响应不能说明密码错误或缺少验证码，请稍后重试。"
+            }
+          },
+          "en": {
+            "stringUnit": {
+              "state": "translated",
+              "value": "Apple's login service returned an unexpected response (HTTP %lld). This response does not indicate an incorrect password or a missing verification code. Try again later."
+            }
+          }
+        }
+      },
+      "Authentication is already in progress. Wait for it to finish.": {
+        "localizations": {
+          "en": {
+            "stringUnit": {
+              "state": "translated",
+              "value": "Authentication is already in progress. Wait for it to finish."
+            }
+          },
+          "zh-Hans": {
+            "stringUnit": {
+              "state": "translated",
+              "value": "认证正在进行，请等待完成。"
+            }
+          }
+        }
+      },
+      "Enter the six-digit verification code from your trusted Apple device.": {
+        "localizations": {
+          "zh-Hans": {
+            "stringUnit": {
+              "state": "translated",
+              "value": "请输入受信任 Apple 设备上收到的六位验证码。"
+            }
+          },
+          "en": {
+            "stringUnit": {
+              "state": "translated",
+              "value": "Enter the six-digit verification code from your trusted Apple device."
+            }
+          }
+        }
+      },
+      "Enter the verification code sent by Apple, then authenticate again.": {
+        "localizations": {
+          "zh-Hans": {
+            "stringUnit": {
+              "state": "translated",
+              "value": "请输入 Apple 发送的验证码，然后再次验证。"
+            }
+          },
+          "en": {
+            "stringUnit": {
+              "state": "translated",
+              "value": "Enter the verification code sent by Apple, then authenticate again."
+            }
+          }
+        }
+      },
+      "The local authentication signer failed (stage: %@, reason: %@).": {
+        "localizations": {
+          "en": {
+            "stringUnit": {
+              "state": "translated",
+              "value": "The local authentication signer failed (stage: %@, reason: %@)."
+            }
+          },
+          "zh-Hans": {
+            "stringUnit": {
+              "state": "translated",
+              "value": "本地认证签名器失败（阶段：%@，原因：%@）。"
+            }
+          }
+        }
+      },
+      "The selected account no longer exists. Add it again to continue.": {
+        "localizations": {
+          "en": {
+            "stringUnit": {
+              "state": "translated",
+              "value": "The selected account no longer exists. Add it again to continue."
+            }
+          },
+          "zh-Hans": {
+            "stringUnit": {
+              "state": "translated",
+              "value": "所选账号已不存在。请重新添加后继续。"
+            }
+          }
+        }
+      },
+      "The verification code was rejected. Enter a new code and try again.": {
+        "localizations": {
+          "zh-Hans": {
+            "stringUnit": {
+              "state": "translated",
+              "value": "验证码被拒绝，请输入新的验证码后重试。"
+            }
+          },
+          "en": {
+            "stringUnit": {
+              "state": "translated",
+              "value": "The verification code was rejected. Enter a new code and try again."
+            }
+          }
+        }
+      },
+      "Verification Code": {
+        "localizations": {
+          "zh-Hans": {
+            "stringUnit": {
+              "state": "translated",
+              "value": "验证码"
+            }
+          },
+          "en": {
+            "stringUnit": {
+              "state": "translated",
+              "value": "Verification Code"
+            }
+          }
+        }
+      },
     "" : {
       "shouldTranslate" : false
     },

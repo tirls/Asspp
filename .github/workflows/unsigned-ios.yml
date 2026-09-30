@@ -1,0 +1,37 @@
+name: Unsigned iOS IPA
+
+on:
+  push:
+    branches: [codex/native-web-auth-baseline]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: macos-26
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
+      - name: Prepare build tools
+        run: |
+          set -euo pipefail
+          xcodebuild -version
+          command -v cmake >/dev/null || brew install cmake
+          command -v xcbeautify >/dev/null || brew install xcbeautify
+      - name: SAP protocol and interpreter checks
+        run: bash Resources/Scripts/check.sap.sh
+      - name: Build unsigned iOS app
+        run: bash Resources/Scripts/build.unsigned.ios.sh
+      - name: Upload unsigned IPA and checksum
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: Asspp-unsigned-${{ github.sha }}
+          path: |
+            ${{ runner.temp }}/Asspp-unsigned.ipa
+            ${{ runner.temp }}/Asspp-unsigned.ipa.sha256
+          if-no-files-found: error
+          retention-days: 7

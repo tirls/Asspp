@@ -129,3 +129,5 @@ Configuration/Developer.xcconfig
 References/
 
 Foundation/ApplePackage/
+
+__pycache__/
