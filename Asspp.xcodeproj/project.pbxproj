@@ -219,7 +219,7 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
-			shellScript = "/usr/bin/python3 \"${SRCROOT}/Resources/Scripts/prepare.sap.py\"\n";
+			shellScript = "if [ \"${ASSPP_SAP_PREPARED:-NO}\" = YES ]; then\n    test -f \"${DERIVED_FILE_DIR}/SAP/lib/libunicorn.a\"\nelse\n    /usr/bin/python3 \"${SRCROOT}/Resources/Scripts/prepare.sap.py\"\nfi\n";
 		};
 		C0NF1G001000000000000006 /* Check Developer.xcconfig */ = {
 			isa = PBXShellScriptBuildPhase;

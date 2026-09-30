@@ -9,10 +9,24 @@ CODE_SIGN_IDENTITY =
 CODE_SIGNING_REQUIRED = NO
 CODE_SIGNING_ALLOWED = NO
 EOF
+build_args=(-workspace Asspp.xcworkspace -scheme Asspp -configuration Release
+  -derivedDataPath "$RUNNER_TEMP/AssppBuild" -destination 'generic/platform=iOS'
+  -disableAutomaticPackageResolution CODE_SIGN_IDENTITY="" CODE_SIGNING_REQUIRED=NO
+  CODE_SIGN_ENTITLEMENTS="" CODE_SIGNING_ALLOWED=NO ASSPP_SAP_PREPARED=YES)
+xcodebuild "${build_args[@]}" -showBuildSettings -json > "$RUNNER_TEMP/AssppBuildSettings.json"
+python3 - <<'PY'
+import json, os, subprocess
+from pathlib import Path
+settings = json.loads((Path(os.environ['RUNNER_TEMP']) / 'AssppBuildSettings.json').read_text())
+target = next(item['buildSettings'] for item in settings if item['target'] == 'Asspp')
+env = dict(os.environ)
+env.update({key: value for key, value in target.items() if isinstance(value, str)})
+subprocess.run(['/usr/bin/python3', 'Resources/Scripts/prepare.sap.py'], env=env, check=True)
+PY
 xcodebuild -workspace Asspp.xcworkspace -scheme Asspp -configuration Release \
   -derivedDataPath "$RUNNER_TEMP/AssppBuild" -destination 'generic/platform=iOS' \
   -disableAutomaticPackageResolution \
-  CODE_SIGN_IDENTITY="" CODE_SIGNING_REQUIRED=NO CODE_SIGN_ENTITLEMENTS="" CODE_SIGNING_ALLOWED=NO \
+  CODE_SIGN_IDENTITY="" CODE_SIGNING_REQUIRED=NO CODE_SIGN_ENTITLEMENTS="" CODE_SIGNING_ALLOWED=NO ASSPP_SAP_PREPARED=YES \
   build | xcbeautify
 app_path="$RUNNER_TEMP/AssppBuild/Build/Products/Release-iphoneos/Asspp.app"
 test -d "$app_path"
