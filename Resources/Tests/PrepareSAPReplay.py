@@ -8,6 +8,10 @@ time_call = 'auto now = std::chrono::system_clock::now();'
 assert source.count(random_call) == 1 and source.count(time_call) == 1
 source = source.replace(random_call, 'SetResult(SAPReplayRandom());')
 source = source.replace(time_call, 'auto now = std::chrono::system_clock::time_point(std::chrono::milliseconds(SAPReplayTime()));')
+# Diagnostic hypothesis: mirror observed Web f64->u64 saturation for platform -1.
+assert source.count('kFakeHandle = UINT64_MAX;') == 1
+source = source.replace('kFakeHandle = UINT64_MAX;', 'kFakeHandle = 0;')
+source = source.replace('SetResult(UINT64_MAX);', 'SetResult(0);')
 load_call = 'imgCommerceKit ->Load(m->uc_);'
 assert source.count(load_call) == 1
 source = source.replace(load_call, load_call + '\n    SAPInstallTimestampHooks(m->uc_);')
