@@ -1,4 +1,4 @@
-name: Web and native SAP equivalence
+name: Native signed authentication diagnostic
 
 on:
   push:
@@ -9,29 +9,34 @@ permissions:
   contents: read
 
 jobs:
-  compare:
+  probe:
     runs-on: macos-26
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with:
           persist-credentials: false
-      - name: Build verified SAP interpreter
+      - name: Prepare verified interpreter and TLS libraries
         run: |
           set -euo pipefail
           command -v cmake >/dev/null || brew install cmake
-          env DERIVED_FILE_DIR="$RUNNER_TEMP/SAPReplay" SRCROOT="$PWD" \
-            TARGET_BUILD_DIR="$RUNNER_TEMP/SAPReplay" UNLOCALIZED_RESOURCES_FOLDER_PATH=Resources \
-            PLATFORM_NAME=macosx ARCHS="$(uname -m)" MACOSX_DEPLOYMENT_TARGET=15.0 \
-            SDKROOT="$(xcrun --sdk macosx --show-sdk-path)" \
-            /usr/bin/python3 Resources/Scripts/prepare.sap.py
-      - name: Compare Web handshake and signatures without credentials
+          export DERIVED_FILE_DIR="$RUNNER_TEMP/AuthProbe" SRCROOT="$PWD"
+          export TARGET_BUILD_DIR="$RUNNER_TEMP/AuthProbe" UNLOCALIZED_RESOURCES_FOLDER_PATH=Resources
+          export PLATFORM_NAME=macosx ARCHS="$(uname -m)" MACOSX_DEPLOYMENT_TARGET=15.0
+          export SDKROOT="$(xcrun --sdk macosx --show-sdk-path)"
+          /usr/bin/python3 Resources/Scripts/prepare.sap.py
+          /usr/bin/python3 Resources/Scripts/prepare.curl.py
+      - name: Send one signed synthetic login without real credentials
         run: |
           set -euo pipefail
-          /usr/bin/python3 Resources/Tests/PrepareSAPReplay.py "$RUNNER_TEMP/SAPReplay.cpp"
-          xcrun clang++ -std=c++20 -O2 -fobjc-arc -framework Foundation \
-            -I Asspp/Backend/AppStore/SAP -I "$RUNNER_TEMP/SAPReplay/SAP/source/include" \
-            Resources/Tests/SAPWebEquivalenceChecks.mm "$RUNNER_TEMP/SAPReplay.cpp" \
-            Asspp/Backend/AppStore/SAP/MachImage.cpp \
-            "$RUNNER_TEMP/SAPReplay/SAP/lib/libunicorn.a" -o "$RUNNER_TEMP/sap-equivalence"
-          "$RUNNER_TEMP/sap-equivalence" "$RUNNER_TEMP/SAPReplay/SAP/assets" Resources/Tests/WebSAPVector.json
+          probe_root="$RUNNER_TEMP/AuthProbe"
+          xcrun clang -fobjc-arc -c Asspp/Backend/AppStore/CurlAuthenticationClient.m \
+            -I "$probe_root/AuthenticationCurl/include" -o "$probe_root/transport.o"
+          xcrun clang++ -std=c++20 -O2 -fobjc-arc -framework Foundation -framework SystemConfiguration -lz \
+            -I Asspp/Backend/AppStore -I Asspp/Backend/AppStore/SAP -I "$probe_root/SAP/source/include" \
+            Resources/Tests/AuthServiceProbe.mm Asspp/Backend/AppStore/SAP/SAPContext.mm \
+            Asspp/Backend/AppStore/SAP/SapMachine.cpp Asspp/Backend/AppStore/SAP/MachImage.cpp \
+            "$probe_root/transport.o" "$probe_root/SAP/lib/libunicorn.a" \
+            -L "$probe_root/AuthenticationCurl/lib" -lcurl -lmbedtls -lmbedx509 -lmbedcrypto \
+            -o "$probe_root/native-auth-probe"
+          "$probe_root/native-auth-probe" "$probe_root/Resources/SAPAssets" "$probe_root/AuthenticationCurl/cacert.pem"

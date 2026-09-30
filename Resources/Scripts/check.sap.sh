@@ -48,3 +48,13 @@ spec.loader.exec_module(sap)
 sap.bundle_assets(Path(os.environ['SAP_RUNTIME_DIR']) / 'assets', Path(os.environ['SAP_CHECK_DIR']) / 'packed-assets')
 PY
 "$sap_check_dir/handshake-checks" "$sap_check_dir/packed-assets"
+
+# Replay the working Web engine's exact synthetic handshake/signatures.
+# Only the standalone test source controls randomness and guest timestamps.
+/usr/bin/python3 Resources/Tests/PrepareSAPReplay.py "$sap_check_dir/SAPReplay.cpp"
+xcrun clang++ -std=c++20 -O2 -fobjc-arc -framework Foundation \
+    -I Asspp/Backend/AppStore/SAP -I "$sap_runtime_dir/source/include" \
+    Resources/Tests/SAPWebEquivalenceChecks.mm "$sap_check_dir/SAPReplay.cpp" \
+    Asspp/Backend/AppStore/SAP/MachImage.cpp \
+    "$sap_runtime_dir/lib/libunicorn.a" -o "$sap_check_dir/equivalence-checks"
+"$sap_check_dir/equivalence-checks" "$sap_runtime_dir/assets" Resources/Tests/WebSAPVector.json
