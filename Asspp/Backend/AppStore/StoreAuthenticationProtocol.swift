@@ -6,7 +6,7 @@ enum StoreAuthenticationError: LocalizedError {
     case invalidConfiguration
     case invalidRedirect
     case serviceResponse(Int)
-    case signingFailed
+    case signingFailed(stage: String, reason: String)
     case rejected(String, String)
     case tooManyAttempts
 
@@ -29,8 +29,8 @@ enum StoreAuthenticationError: LocalizedError {
             String(localized: "Apple returned an invalid login redirect. No credentials were forwarded.")
         case let .serviceResponse(status):
             String(localized: "Apple's login service returned an unexpected response (HTTP \(status)). This response does not indicate an incorrect password or a missing verification code. Try again later.")
-        case .signingFailed:
-            String(localized: "The local authentication signer failed. Rebuild or update the app and try again.")
+        case let .signingFailed(stage, reason):
+            String(localized: "The local authentication signer failed (stage: \(stage), reason: \(reason)).")
         case let .rejected(code, message):
             message.isEmpty ? String(localized: "Apple rejected the login (code: \(code)).") : message
         case .tooManyAttempts:
@@ -42,6 +42,14 @@ enum StoreAuthenticationError: LocalizedError {
 /// Pure protocol rules, shared by production requests and regression checks.
 enum StoreAuthenticationProtocol {
     static let authenticationPath = "/WebObjects/MZFinance.woa/wa/authenticate"
+
+    static func signerFailure(_ error: NSError) -> StoreAuthenticationError {
+        let stages = ["load", "initialize", "exchange-1", "exchange-2", "sign"]
+        let reasons = ["asset-missing", "asset-integrity", "timeout", "guest-stopped", "unsupported-import", "emulator", "guest-result", "handshake-state", "invalid-input", "runtime"]
+        let stage = error.userInfo["AssppSAPStage"] as? String ?? "unknown"
+        let reason = error.userInfo["AssppSAPReason"] as? String ?? "runtime"
+        return .signingFailed(stage: stages.contains(stage) ? stage : "unknown", reason: reasons.contains(reason) ? reason : "runtime")
+    }
 
     static func authenticationURL(_ value: String) throws -> URL {
         guard let url = URL(string: value), url.scheme == "https",

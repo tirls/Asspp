@@ -6,6 +6,7 @@ trap 'rm -rf "$download_check_dir"' EXIT
 cd "$download_repo_dir"
 swiftc Asspp/Backend/AppStore/StoreProtocol.swift \
     Asspp/Backend/AppStore/StoreDiagnostics.swift \
+    Asspp/Backend/AppStore/StoreAuthenticationProtocol.swift \
     Asspp/Backend/AppStore/StoreDownloadProtocol.swift \
     Resources/Tests/DownloadProtocolChecks.swift -o "$download_check_dir/download-checks"
 "$download_check_dir/download-checks"

@@ -31,3 +31,11 @@ xcrun clang++ -std=c++20 -O1 -g -fsanitize=address,undefined \
     Asspp/Backend/AppStore/SAP/SapMachine.cpp Asspp/Backend/AppStore/SAP/MachImage.cpp \
     "$sap_runtime_dir/lib/libunicorn.a" -o "$sap_check_dir/runtime-checks"
 "$sap_check_dir/runtime-checks"
+
+# Exercise the actual Objective-C bridge, verified Apple assets and full interpreter.
+xcrun clang++ -std=c++20 -O2 -fobjc-arc -framework Foundation \
+    -I Asspp/Backend/AppStore/SAP -I "$sap_runtime_dir/source/include" \
+    Resources/Tests/SAPHandshakeChecks.mm Asspp/Backend/AppStore/SAP/SAPContext.mm \
+    Asspp/Backend/AppStore/SAP/SapMachine.cpp Asspp/Backend/AppStore/SAP/MachImage.cpp \
+    "$sap_runtime_dir/lib/libunicorn.a" -o "$sap_check_dir/handshake-checks"
+"$sap_check_dir/handshake-checks" "$sap_runtime_dir/assets"

@@ -65,6 +65,13 @@ struct AuthenticationProtocolChecks {
         }
         // Never retry a parsed rejection even when the HTTP layer says 5xx.
         precondition(!StoreAuthenticationProtocol.retryable(status: 500, data: binary))
+        let signerError = NSError(domain: "Asspp.SAP", code: 1, userInfo: ["AssppSAPStage": "initialize", "AssppSAPReason": "emulator", NSLocalizedDescriptionKey: "secret-fixture"])
+        let safeError = StoreAuthenticationProtocol.signerFailure(signerError)
+        precondition(safeError.localizedDescription.contains("initialize"))
+        precondition(StoreDiagnostics.errorSummary(safeError) == "SAP stage=initialize reason=emulator")
+        precondition(!safeError.localizedDescription.contains("secret-fixture"))
+        let unknownError = NSError(domain: "Asspp.SAP", code: 1, userInfo: ["AssppSAPStage": "secret-fixture", "AssppSAPReason": "secret-fixture"])
+        precondition(StoreDiagnostics.errorSummary(StoreAuthenticationProtocol.signerFailure(unknownError)) == "SAP stage=unknown reason=runtime")
         print("Authentication protocol regression checks passed.")
     }
 }

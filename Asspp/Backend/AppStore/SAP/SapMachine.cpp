@@ -771,8 +771,12 @@ uint64_t SapMachine::Invoke(uint64_t fn, std::initializer_list<uint64_t> args) {
 
     uint64_t rip = 0;
     UC_CHECK(uc_reg_read(uc_, UC_X86_REG_RIP, &rip), "read RIP");
-    if (rip != kReturnAddr)
+    if (rip != kReturnAddr) {
+        size_t timedOut = 0;
+        UC_CHECK(uc_query(uc_, UC_QUERY_TIMEOUT, &timedOut), "uc_query timeout");
+        if (timedOut) throw std::runtime_error("SAP emulation timed out");
         throw std::runtime_error(std::format("guest stopped at {:#x}, expected {:#x}", rip, kReturnAddr));
+    }
 
     uint64_t rax = 0;
     UC_CHECK(uc_reg_read(uc_, UC_X86_REG_RAX, &rax), "read RAX");

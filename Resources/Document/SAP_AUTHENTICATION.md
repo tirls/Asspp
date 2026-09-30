@@ -59,6 +59,11 @@ cache invalidation. Native allocator and malformed Mach-O checks run under
 AddressSanitizer and UndefinedBehaviorSanitizer. An optional argument points to
 an existing macOS `DerivedSources/SAP` directory to reuse the interpreter build.
 The suite requires no Apple account. It also runs in a dedicated PR workflow.
+It now exercises the production Objective-C bridge with the verified assets,
+completes Apple's public certificate/setup exchange, and signs a synthetic body
+three times. This public check requires network access to Apple's setup endpoints.
+On-device signing failures report a fixed stage and reason identifier; diagnostic
+logs retain those identifiers without including credentials or guest input data.
 
 A successful public SAP handshake proves that the signing engine works. It does
 not by itself establish that Apple will accept any particular account or network.

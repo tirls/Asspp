@@ -32,7 +32,7 @@ actor SignedStoreAuthenticator {
         do {
             return try await performAuthentication(email: email, password: password, code: code, guid: guid, cookies: cookies)
         } catch where (error as NSError).domain == "Asspp.SAP" {
-            throw StoreAuthenticationError.signingFailed
+            throw StoreAuthenticationProtocol.signerFailure(error as NSError)
         }
     }
 

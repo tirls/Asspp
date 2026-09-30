@@ -14,8 +14,23 @@ static std::vector<uint8_t> ReadVerifiedAsset(NSURL *root, NSString *name, NSUIn
     return {bytes, bytes + data.length};
 }
 
-static void SetError(NSError **error, const std::exception &exception) {
-    if (error) *error = [NSError errorWithDomain:@"Asspp.SAP" code:1 userInfo:@{NSLocalizedDescriptionKey: [NSString stringWithUTF8String:exception.what()]}];
+static void SetError(NSError **error, NSString *stage, const std::exception &exception) {
+    // These identifiers are safe to show and retain; never include guest memory or input data.
+    const std::string_view detail(exception.what());
+    NSString *reason = @"runtime";
+    if (detail.starts_with("Missing or truncated SAP assets")) reason = @"asset-missing";
+    else if (detail.starts_with("SAP asset integrity check failed")) reason = @"asset-integrity";
+    else if (detail.starts_with("SAP emulation timed out")) reason = @"timeout";
+    else if (detail.starts_with("guest stopped at")) reason = @"guest-stopped";
+    else if (detail.starts_with("unsupported SAP import")) reason = @"unsupported-import";
+    else if (detail.starts_with("uc_")) reason = @"emulator";
+    else if (detail.starts_with("Initialize returned") || detail.starts_with("Exchange returned") || detail.starts_with("Sign returned")) reason = @"guest-result";
+    else if (detail.starts_with("Unexpected SAP handshake state")) reason = @"handshake-state";
+    else if (detail.starts_with("Invalid SAP") || detail.starts_with("SAP session is not ready")) reason = @"invalid-input";
+    if (error) *error = [NSError errorWithDomain:@"Asspp.SAP" code:1 userInfo:@{
+        NSLocalizedDescriptionKey: [NSString stringWithUTF8String:exception.what()],
+        @"AssppSAPStage": stage, @"AssppSAPReason": reason
+    }];
 }
 
 @implementation SAPContext {
@@ -29,6 +44,7 @@ static void SetError(NSError **error, const std::exception &exception) {
 - (instancetype)initWithAssetsURL:(NSURL *)url hardwareID:(NSData *)hardwareID error:(NSError **)error {
     self = [super init];
     if (!self) return nil;
+    NSString *stage = @"load";
     try {
         if (hardwareID.length != 6) throw std::runtime_error("Invalid SAP device identifier.");
         auto bytes = static_cast<const uint8_t *>(hardwareID.bytes);
@@ -40,10 +56,11 @@ static void SetError(NSError **error, const std::exception &exception) {
             ReadVerifiedAsset(url, @"CoreFP.icxs", 5288352, @"473e78af86979f5bd4f6269561caf770b3d16c098d918846eeac8cdd2fe6566a"),
             _hardwareID
         );
+        stage = @"initialize";
         _context = _machine->Initialize(_hardwareID);
         return self;
     } catch (const std::exception &exception) {
-        SetError(error, exception);
+        SetError(error, stage, exception);
         return nil;
     }
 }
@@ -60,7 +77,7 @@ static void SetError(NSError **error, const std::exception &exception) {
         _complete = state == 0;
         return [NSData dataWithBytes:output.data() length:output.size()];
     } catch (const std::exception &exception) {
-        SetError(error, exception);
+        SetError(error, _exchanges == 0 ? @"exchange-1" : @"exchange-2", exception);
         return nil;
     }
 }
@@ -72,7 +89,7 @@ static void SetError(NSError **error, const std::exception &exception) {
         if (signature.empty()) throw std::runtime_error("SAP returned an empty signature.");
         return [NSData dataWithBytes:signature.data() length:signature.size()];
     } catch (const std::exception &exception) {
-        SetError(error, exception);
+        SetError(error, @"sign", exception);
         return nil;
     }
 }
