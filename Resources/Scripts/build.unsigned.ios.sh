@@ -1,0 +1,45 @@
+#!/bin/bash
+set -euo pipefail
+app_root=$(cd "$(dirname "$0")/../.." && pwd)
+cd "$app_root"
+cat > Configuration/Developer.xcconfig <<'EOF'
+DEVELOPMENT_TEAM =
+CODE_SIGN_STYLE = Manual
+CODE_SIGN_IDENTITY =
+CODE_SIGNING_REQUIRED = NO
+CODE_SIGNING_ALLOWED = NO
+EOF
+xcodebuild -workspace Asspp.xcworkspace -scheme Asspp -configuration Release \
+  -derivedDataPath "$RUNNER_TEMP/AssppBuild" -destination 'generic/platform=iOS' \
+  -disableAutomaticPackageResolution \
+  CODE_SIGN_IDENTITY="" CODE_SIGNING_REQUIRED=NO CODE_SIGN_ENTITLEMENTS="" CODE_SIGNING_ALLOWED=NO \
+  build | xcbeautify
+app_path="$RUNNER_TEMP/AssppBuild/Build/Products/Release-iphoneos/Asspp.app"
+test -d "$app_path"
+test ! -e "$app_path/embedded.mobileprovision"
+if codesign -dv "$app_path" 2>/dev/null; then
+  echo 'Unexpected signature on unsigned app' >&2
+  exit 1
+fi
+APP_PATH="$app_path" python3 - <<'PY'
+import hashlib, importlib.util, os, plistlib
+from pathlib import Path
+spec = importlib.util.spec_from_file_location('sap_build', 'Resources/Scripts/prepare.sap.py')
+sap = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(sap)
+app = Path(os.environ['APP_PATH'])
+with (app / 'Info.plist').open('rb') as stream:
+    info = plistlib.load(stream)
+assert info['CFBundleIdentifier'] == 'wiki.qaq.Asspp'
+assert 'iPhoneOS' in info['CFBundleSupportedPlatforms']
+for name, expected in sap.ASSETS.items():
+    assert sap.valid_asset(app / 'SAPAssets' / name, expected), name
+print('Verified iOS package identity and all bundled SAP asset hashes.')
+PY
+mkdir -p "$RUNNER_TEMP/AssppPackage/Payload"
+ditto "$app_path" "$RUNNER_TEMP/AssppPackage/Payload/Asspp.app"
+cd "$RUNNER_TEMP/AssppPackage"
+/usr/bin/zip -q -r "$RUNNER_TEMP/Asspp-unsigned.ipa" Payload
+cd "$RUNNER_TEMP"
+shasum -a 256 Asspp-unsigned.ipa > Asspp-unsigned.ipa.sha256
+cat Asspp-unsigned.ipa.sha256

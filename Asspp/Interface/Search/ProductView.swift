@@ -104,12 +104,10 @@ struct ProductView: View {
         } message: {}
     }
 
-    /// Rotates the password token and requests a license for the current
+    /// Requests a license using the current session without forcing a full login.
     /// account. Sets `licenseHint` to a success message; callers handle errors.
     private func acquireLicense() async throws {
         guard let account else { return }
-        // Reuse SAP authentication, then reload the freshly persisted account.
-        try await vm.rotate(id: account.id)
         try await vm.withAccount(id: account.id) { userAccount in
             try await ApplePackage.Purchase.purchase(
                 account: &userAccount.account,

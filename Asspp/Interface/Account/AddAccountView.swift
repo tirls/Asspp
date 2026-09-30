@@ -61,6 +61,11 @@ struct AddAccountView: View {
             } footer: {
                 Text("Your account is saved in your Keychain and will be synced across devices with the same iCloud account signed in.")
             }
+            if !codeRequired {
+                Button("Enter Verification Code") {
+                    codeRequired = true
+                }
+            }
             if codeRequired {
                 Section {
                     TextField("Verification Code", text: $code)

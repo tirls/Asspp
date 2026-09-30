@@ -20,13 +20,13 @@ Foundation represents domain cookies with a leading dot; ApplePackage 1.2.7's
 request matcher expects the bare domain. Login export normalizes that format,
 and every store operation also normalizes previously saved account cookies.
 Restoring cookies for SAP reauthentication preserves their subdomain scope.
-License acquisition refreshes through the same signed authenticator.
+License acquisition uses the existing session; explicit account refresh uses the signed authenticator.
 
 Login requests follow only HTTPS redirects to the documented buy/pN-buy Apple
 hosts and authentication path. Certificate validation remains enabled, including
 Debug builds. Unstructured HTTP 204, 404 and 5xx responses get at most three
 transport attempts. Credential errors, HTTP 403 and 429 do not trigger that retry.
-Only Apple's explicit code challenge/rejection reveals the verification-code UI.
+Apple's explicit code challenge/rejection reveals the verification-code UI; users can also open it manually.
 
 ## Reproducible builds
 
