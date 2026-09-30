@@ -6,6 +6,18 @@
 
 // One deliberately nonexistent account; no real credentials or response bodies.
 static NSString *const UserAgent = @"Configurator/2.17 (Macintosh; OS X 15.2; 24C5089c) AppleWebKit/0620.1.16.11.6";
+static id DecodePlist(NSData *data) {
+    id value = [NSPropertyListSerialization propertyListWithData:data options:0 format:NULL error:NULL];
+    if (value) return value;
+    // Apple's public bag can wrap the plist; mirror production StoreProtocol.
+    NSString *text = [[NSString alloc] initWithData:data encoding:NSUTF8StringEncoding];
+    if (!text) return nil;
+    NSRange begin = [text rangeOfString:@"<plist"];
+    NSRange end = [text rangeOfString:@"</plist>"];
+    if (begin.location == NSNotFound || end.location == NSNotFound || end.location <= begin.location) return nil;
+    NSData *inner = [[text substringWithRange:NSMakeRange(begin.location, NSMaxRange(end) - begin.location)] dataUsingEncoding:NSUTF8StringEncoding];
+    return [NSPropertyListSerialization propertyListWithData:inner options:0 format:NULL error:NULL];
+}
 static CurlAuthenticationResponse *Fetch(NSString *ca, NSURL *url, NSData *body, NSString *signature, const char *stage) {
     NSMutableURLRequest *request = [NSMutableURLRequest requestWithURL:url];
     [request setValue:UserAgent forHTTPHeaderField:@"User-Agent"];
@@ -18,13 +30,13 @@ static CurlAuthenticationResponse *Fetch(NSString *ca, NSURL *url, NSData *body,
     NSError *error = nil;
     CurlAuthenticationResponse *response = [[CurlAuthenticationClient new] performRequest:request caBundlePath:ca error:&error];
     if (!response) throw std::runtime_error("Probe TLS transfer failed");
-    const BOOL plist = [NSPropertyListSerialization propertyListWithData:response.data options:0 format:NULL error:NULL] != nil;
+    const BOOL plist = DecodePlist(response.data) != nil;
     std::cout << stage << ": HTTP " << response.statusCode << ", " << response.data.length << " bytes, plist=" << (plist ? "true" : "false") << std::endl;
     return response;
 }
 
 static NSDictionary *Plist(CurlAuthenticationResponse *response) {
-    id value = [NSPropertyListSerialization propertyListWithData:response.data options:0 format:NULL error:NULL];
+    id value = DecodePlist(response.data);
     if (response.statusCode != 200 || ![value isKindOfClass:[NSDictionary class]]) throw std::runtime_error("Invalid public setup response");
     return value;
 }
@@ -58,7 +70,7 @@ int main(int argc, const char *argv[]) {
             if (signature.length != 501) throw std::runtime_error("Unexpected signature length");
             NSURL *url = [NSURL URLWithString:@"https://auth.itunes.apple.com/auth/v1/native/fast/?guid=024153535050"];
             CurlAuthenticationResponse *response = Fetch(ca, url, body, [signature base64EncodedStringWithOptions:0], "synthetic-login");
-            NSDictionary *result = [NSPropertyListSerialization propertyListWithData:response.data options:0 format:NULL error:NULL];
+            NSDictionary *result = DecodePlist(response.data);
             if ([result isKindOfClass:[NSDictionary class]]) {
                 const BOOL explicitRejection = result[@"failureType"] != nil || result[@"customerMessage"] != nil || result[@"dialog"] != nil;
                 std::cout << "Explicit structured rejection=" << (explicitRejection ? "true" : "false") << std::endl;
