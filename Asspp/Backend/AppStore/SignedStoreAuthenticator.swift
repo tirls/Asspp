@@ -3,32 +3,11 @@ import Foundation
 
 /// One isolated transport and signer per login. Credentials only go to validated Apple endpoints.
 actor SignedStoreAuthenticator {
-    private final class NoRedirect: NSObject, URLSessionTaskDelegate {
-        func urlSession(_: URLSession, task _: URLSessionTask,
-                        willPerformHTTPRedirection _: HTTPURLResponse,
-                        newRequest _: URLRequest,
-                        completionHandler: @escaping (URLRequest?) -> Void)
-        {
-            completionHandler(nil)
-        }
-    }
-
-    private let session: URLSession
-    private let cookieStorage: HTTPCookieStorage
+    private let transport = StoreAuthenticationTransport()
+    private var cookieStorage: HTTPCookieStorage { transport.cookieStorage }
     private let userAgent = ApplePackage.Configuration.userAgent
 
-    init() {
-        let configuration = URLSessionConfiguration.ephemeral
-        configuration.timeoutIntervalForRequest = 30
-        configuration.timeoutIntervalForResource = 60
-        configuration.urlCredentialStorage = nil
-        configuration.urlCache = nil
-        cookieStorage = configuration.httpCookieStorage!
-        session = URLSession(configuration: configuration, delegate: NoRedirect(), delegateQueue: nil)
-    }
-
     func authenticate(email: String, password: String, code: String, guid: String, cookies: [Cookie]) async throws -> ApplePackage.Account {
-        defer { session.invalidateAndCancel() }
         do {
             return try await performAuthentication(email: email, password: password, code: code, guid: guid, cookies: cookies)
         } catch where (error as NSError).domain == "Asspp.SAP" {
@@ -46,7 +25,7 @@ actor SignedStoreAuthenticator {
         var bagComponents = URLComponents(string: "https://init.itunes.apple.com/bag.xml")!
         bagComponents.queryItems = [URLQueryItem(name: "guid", value: guid)]
         let bagURL = bagComponents.url!
-        let (bagData, bagResponse) = try await send(URLRequest(url: bagURL))
+        let (bagData, bagResponse) = try await send(URLRequest(url: bagURL), stage: "bag")
         guard bagResponse.statusCode == 200, let bag = StoreProtocol.plist(bagData) else {
             throw StoreAuthenticationError.serviceResponse(bagResponse.statusCode)
         }
@@ -54,7 +33,7 @@ actor SignedStoreAuthenticator {
         func value(_ key: String) -> Any? {
             bag[key] ?? nested[key]
         }
-        let endpoint = try StoreAuthenticationProtocol.authenticationURL(StoreProtocol.string(value("authenticateAccount")))
+        let endpoint = try StoreAuthenticationProtocol.initialAuthenticationURL(StoreProtocol.string(value("authenticateAccount")), guid: guid)
         guard StoreProtocol.string(value("sign-sap-version")) == "200",
               let certificateURL = publicSAPURL(value("sign-sap-setup-cert"), host: "s.mzstatic.com"),
               let setupURL = publicSAPURL(value("sign-sap-setup"), host: "fpinit.itunes.apple.com"),
@@ -67,7 +46,7 @@ actor SignedStoreAuthenticator {
         }
         guard hardware.count == 6 else { throw StoreAuthenticationError.invalidConfiguration }
         let signer = try SAPContext(assetsURL: assets, hardwareID: Data(hardware))
-        let (certificateData, certificateResponse) = try await send(URLRequest(url: certificateURL))
+        let (certificateData, certificateResponse) = try await send(URLRequest(url: certificateURL), stage: "certificate")
         guard certificateResponse.statusCode == 200,
               let certificate = StoreProtocol.plist(certificateData)?["sign-sap-setup-cert"] as? Data
         else { throw StoreAuthenticationError.serviceResponse(certificateResponse.statusCode) }
@@ -76,7 +55,7 @@ actor SignedStoreAuthenticator {
         setup.httpMethod = "POST"
         setup.setValue("application/x-plist", forHTTPHeaderField: "Content-Type")
         setup.httpBody = try PropertyListSerialization.data(fromPropertyList: ["sign-sap-setup-buffer": exchange], format: .xml, options: 0)
-        let (setupData, setupResponse) = try await send(setup)
+        let (setupData, setupResponse) = try await send(setup, stage: "setup")
         guard setupResponse.statusCode == 200,
               let reply = StoreProtocol.plist(setupData)?["sign-sap-setup-buffer"] as? Data
         else { throw StoreAuthenticationError.serviceResponse(setupResponse.statusCode) }
@@ -94,7 +73,8 @@ actor SignedStoreAuthenticator {
             var request = URLRequest(url: url)
             request.httpMethod = "POST"
             request.httpBody = body
-            request.setValue("application/x-www-form-urlencoded", forHTTPHeaderField: "Content-Type")
+            // Match the plist body and the working ApplePackage/Web request profile.
+            request.setValue("application/x-apple-plist", forHTTPHeaderField: "Content-Type")
             let (data, response) = try await sendAuthentication(request, signer: signer)
             if let value = response.value(forHTTPHeaderField: "X-Set-Apple-Store-Front") {
                 storefront = value
@@ -147,14 +127,13 @@ actor SignedStoreAuthenticator {
         throw StoreAuthenticationError.tooManyAttempts
     }
 
-    private func send(_ request: URLRequest) async throws -> (Data, HTTPURLResponse) {
+    private func send(_ request: URLRequest, stage: String) async throws -> (Data, HTTPURLResponse) {
         var request = request
         request.setValue(userAgent, forHTTPHeaderField: "User-Agent")
         request.setValue(Locale.preferredLanguages.prefix(3).joined(separator: ", "), forHTTPHeaderField: "Accept-Language")
-        let (data, response) = try await session.data(for: request)
-        guard let response = response as? HTTPURLResponse else { throw StoreAuthenticationError.serviceResponse(0) }
+        let (data, response) = try await transport.send(request)
         // Do not log bodies, signatures, URL query strings, or Set-Cookie headers.
-        logger.info("Apple authentication: HTTP \(response.statusCode), \(data.count) bytes")
+        logger.info("Apple authentication: stage=\(stage) \(StoreDiagnostics.authenticationResponse(response, data: data))")
         return (data, response)
     }
 
@@ -163,11 +142,13 @@ actor SignedStoreAuthenticator {
             var signedRequest = request
             // Retry the identical body with a fresh signature, as ipatool does.
             try signedRequest.setValue(signer.sign(request.httpBody ?? Data()).base64EncodedString(), forHTTPHeaderField: "X-Apple-ActionSignature")
-            let result = try await send(signedRequest)
+            let result = try await send(signedRequest, stage: "login")
             if attempt == 3 || !StoreAuthenticationProtocol.retryable(status: result.1.statusCode, data: result.0) {
                 return result
             }
-            try await Task.sleep(for: .milliseconds(attempt * 250))
+            let delay = StoreAuthenticationProtocol.retryDelay(attempt: attempt, retryAfter: result.1.value(forHTTPHeaderField: "Retry-After"))
+            logger.info("Apple authentication: retry=\(attempt) wait=\(delay)s")
+            try await Task.sleep(for: .seconds(delay))
         }
         throw StoreAuthenticationError.tooManyAttempts
     }

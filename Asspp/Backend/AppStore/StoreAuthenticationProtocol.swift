@@ -73,10 +73,30 @@ enum StoreAuthenticationProtocol {
         ], format: .xml, options: 0)
     }
 
+    static func initialAuthenticationURL(_ value: String, guid: String) throws -> URL {
+        let endpoint = try authenticationURL(value)
+        guard var components = URLComponents(url: endpoint, resolvingAgainstBaseURL: false) else {
+            throw StoreAuthenticationError.invalidRedirect
+        }
+        var query = components.queryItems ?? []
+        query.removeAll { $0.name == "guid" }
+        query.append(URLQueryItem(name: "guid", value: guid))
+        components.queryItems = query
+        guard let url = components.url else { throw StoreAuthenticationError.invalidRedirect }
+        return url
+    }
+
+    static func retryDelay(attempt: Int, retryAfter: String?) -> Int {
+        if let retryAfter, let seconds = Int(retryAfter), seconds > 0 {
+            return min(seconds, 30)
+        }
+        return min(max(attempt, 1) * 10, 30)
+    }
+
     static func retryable(status: Int, data: Data) -> Bool {
         // Only retry unstructured transient responses, never a credential/2FA rejection.
         guard StoreProtocol.plist(data) == nil else { return false }
-        return status == 204 || status == 404 || (500 ... 599).contains(status)
+        return status == 204 || status == 404 || status == 429 || (500 ... 599).contains(status)
     }
 
     static func rejection(_ plist: [String: Any], code: String) -> StoreAuthenticationError? {

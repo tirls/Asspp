@@ -6,6 +6,10 @@ struct AuthenticationProtocolChecks {
         let auth = "https://buy.itunes.apple.com/WebObjects/MZFinance.woa/wa/authenticate"
         _ = try StoreAuthenticationProtocol.authenticationURL(auth)
         _ = try StoreAuthenticationProtocol.authenticationURL(auth.replacingOccurrences(of: "buy.", with: "p25-buy."))
+        let initial = try StoreAuthenticationProtocol.initialAuthenticationURL(auth + "?guid=old&x=1&guid=duplicate", guid: "024153535050")
+        let query = URLComponents(url: initial, resolvingAgainstBaseURL: false)!.queryItems!
+        precondition(query.filter { $0.name == "guid" }.map { $0.value } == ["024153535050"])
+        precondition(query.contains { $0.name == "x" && $0.value == "1" })
         for invalid in [
             auth.replacingOccurrences(of: "https:", with: "http:"),
             auth.replacingOccurrences(of: "buy.itunes.apple.com", with: "buy.itunes.apple.com.attacker.example"),
@@ -57,14 +61,28 @@ struct AuthenticationProtocolChecks {
         precondition(StoreAuthenticationProtocol.rejection(["failureType": 5005], code: "123456")?.needsCode == true)
         precondition(StoreAuthenticationProtocol.rejection(["failureType": "-5000", "customerMessage": "Bad credentials"], code: "")?.needsCode == false)
         precondition(StoreAuthenticationError.serviceResponse(403).needsCode == false)
-        for status in [204, 404, 500, 503] {
+        for status in [204, 404, 429, 500, 503] {
             precondition(StoreAuthenticationProtocol.retryable(status: status, data: Data()))
         }
-        for status in [200, 301, 302, 400, 401, 403, 429] {
+        for status in [200, 301, 302, 400, 401, 403] {
             precondition(!StoreAuthenticationProtocol.retryable(status: status, data: Data()))
         }
         // Never retry a parsed rejection even when the HTTP layer says 5xx.
         precondition(!StoreAuthenticationProtocol.retryable(status: 500, data: binary))
+        precondition(!StoreAuthenticationProtocol.retryable(status: 429, data: binary))
+        precondition(StoreAuthenticationProtocol.retryDelay(attempt: 1, retryAfter: nil) == 10)
+        precondition(StoreAuthenticationProtocol.retryDelay(attempt: 2, retryAfter: "invalid") == 20)
+        precondition(StoreAuthenticationProtocol.retryDelay(attempt: 1, retryAfter: "12") == 12)
+        precondition(StoreAuthenticationProtocol.retryDelay(attempt: 1, retryAfter: "9999") == 30)
+        precondition(StoreAuthenticationProtocol.retryDelay(attempt: 1, retryAfter: "-10") == 10)
+        let diagnostic = HTTPURLResponse(url: initial, statusCode: 301, httpVersion: "HTTP/1.1", headerFields: [
+            "Content-Type": "text/html; charset=utf-8", "Location": "https://secret-fixture.invalid/private",
+            "Set-Cookie": "secret-fixture", "X-Request-ID": "secret-fixture",
+        ])!
+        let summary = StoreDiagnostics.authenticationResponse(diagnostic, data: Data("secret-fixture".utf8))
+        precondition(summary.contains("HTTP 301") && summary.contains("type=text/html") && summary.contains("location=present"))
+        precondition(!summary.contains("secret-fixture"))
+        precondition(StoreDiagnostics.errorSummary(StoreAuthenticationError.serviceResponse(403)).contains("HTTP=403"))
         let signerError = NSError(domain: "Asspp.SAP", code: 1, userInfo: ["AssppSAPStage": "initialize", "AssppSAPReason": "emulator", NSLocalizedDescriptionKey: "secret-fixture"])
         let safeError = StoreAuthenticationProtocol.signerFailure(signerError)
         precondition(safeError.localizedDescription.contains("initialize"))

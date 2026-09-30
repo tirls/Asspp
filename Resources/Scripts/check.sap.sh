@@ -10,6 +10,11 @@ swiftc Asspp/Backend/AppStore/StoreProtocol.swift \
     Asspp/Backend/AppStore/StoreAuthenticationProtocol.swift \
     Resources/Tests/AuthenticationProtocolChecks.swift -o "$sap_check_dir/auth-checks"
 "$sap_check_dir/auth-checks"
+swiftc Asspp/Backend/AppStore/StoreProtocol.swift \
+    Asspp/Backend/AppStore/StoreAuthenticationProtocol.swift \
+    Asspp/Backend/AppStore/StoreAuthenticationTransport.swift \
+    Resources/Tests/AuthenticationTransportChecks.swift -o "$sap_check_dir/transport-checks"
+/usr/bin/python3 Resources/Tests/AuthenticationTransportFixture.py "$sap_check_dir/transport-checks"
 /usr/bin/python3 Resources/Tests/SAPBuildChecks.py
 /usr/bin/python3 Resources/Tests/LocalizationChecks.py \
     Asspp/Backend/AppStore/StoreAuthenticationProtocol.swift \
