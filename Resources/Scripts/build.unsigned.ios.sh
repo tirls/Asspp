@@ -20,7 +20,9 @@ from pathlib import Path
 settings = json.loads((Path(os.environ['RUNNER_TEMP']) / 'AssppBuildSettings.json').read_text())
 target = next(item['buildSettings'] for item in settings if item['target'] == 'Asspp')
 env = dict(os.environ)
-env.update({key: value for key, value in target.items() if isinstance(value, str)})
+keys = ('SRCROOT', 'DERIVED_FILE_DIR', 'TARGET_BUILD_DIR', 'UNLOCALIZED_RESOURCES_FOLDER_PATH',
+        'PLATFORM_NAME', 'ARCHS', 'SDKROOT', 'IPHONEOS_DEPLOYMENT_TARGET')
+env.update({key: target[key] for key in keys})
 subprocess.run(['/usr/bin/python3', 'Resources/Scripts/prepare.sap.py'], env=env, check=True)
 PY
 xcodebuild -workspace Asspp.xcworkspace -scheme Asspp -configuration Release \
