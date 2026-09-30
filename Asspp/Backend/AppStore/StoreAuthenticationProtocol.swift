@@ -50,6 +50,8 @@ enum StoreAuthenticationError: LocalizedError {
 /// Pure protocol rules, shared by production requests and regression checks.
 enum StoreAuthenticationProtocol {
     static let authenticationPath = "/WebObjects/MZFinance.woa/wa/authenticate"
+    static let nativeAuthenticationPath = "/auth/v1/native/fast/"
+    static let defaultAuthenticationURL = "https://auth.itunes.apple.com/auth/v1/native/fast/"
 
     static func signerFailure(_ error: NSError) -> StoreAuthenticationError {
         let stages = ["load", "initialize", "exchange-1", "exchange-2", "sign"]
@@ -60,11 +62,21 @@ enum StoreAuthenticationProtocol {
     }
 
     static func authenticationURL(_ value: String) throws -> URL {
-        guard let url = URL(string: value), url.scheme == "https",
+        guard var components = URLComponents(string: value), let url = components.url, url.scheme == "https",
               url.user == nil, url.password == nil, url.fragment == nil,
               url.port == nil || url.port == 443,
-              let host = url.host?.lowercased(),
-              host == "buy.itunes.apple.com" || host.range(of: #"^p[0-9]+-buy\.itunes\.apple\.com$"#, options: .regularExpression) != nil,
+              let host = url.host?.lowercased()
+        else { throw StoreAuthenticationError.invalidRedirect }
+        if host == "auth.itunes.apple.com" {
+            guard ["/auth/v1/native", "/auth/v1/native/", "/auth/v1/native/fast", nativeAuthenticationPath].contains(url.path) else {
+                throw StoreAuthenticationError.invalidRedirect
+            }
+            // Match Web's bag normalization, including the required trailing slash.
+            components.path = nativeAuthenticationPath
+            guard let normalized = components.url else { throw StoreAuthenticationError.invalidRedirect }
+            return normalized
+        }
+        guard (host == "buy.itunes.apple.com" || host.range(of: #"^p[0-9]+-buy\.itunes\.apple\.com$"#, options: .regularExpression) != nil),
               url.path == authenticationPath
         else { throw StoreAuthenticationError.invalidRedirect }
         return url
@@ -105,7 +117,7 @@ enum StoreAuthenticationProtocol {
     }
 
     static func initialAuthenticationURL(_ value: String, guid: String) throws -> URL {
-        let endpoint = try authenticationURL(value)
+        let endpoint = try authenticationURL(value.isEmpty ? defaultAuthenticationURL : value)
         guard var components = URLComponents(url: endpoint, resolvingAgainstBaseURL: false) else {
             throw StoreAuthenticationError.invalidRedirect
         }

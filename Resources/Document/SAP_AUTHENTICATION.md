@@ -19,6 +19,9 @@ does not establish native iOS compatibility; the final test is on a device.
 - Serialize the login plist in the same order and format as the Web engine.
   Sign and send exactly those bytes on redirects and bounded transient retries.
 - Use the same Configurator user agent and login content type as Web.
+- Normalize Apple's native authentication URLs to `/auth/v1/native/fast/`,
+  preserving query fields while setting one guid. Both the native host and
+  legacy buy/pod hosts are validated before credentials are sent.
 - Retain the signer and private cookie jar through the verification-code
   challenge; release the pending session on success, other errors, account
   changes or dismissal of the add-account form.
