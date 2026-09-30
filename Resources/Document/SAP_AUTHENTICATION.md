@@ -47,7 +47,20 @@ They also check cookie handling, manual redirects, error classification, resourc
 packing, the native interpreter and the public certificate/setup handshake with
 12-character hardware input. No account credentials are used by CI.
 
-Passing these checks does not prove Apple accepts a login. Native requests still
-use Foundation URLSession and the phone's network, while Web uses libcurl/Mbed TLS
-over Wisp and a server network. If device login fails, those are the next variables
-to investigate, without attributing HTML/empty responses to an incorrect password.
+The 2026-09-30 device test still returned an empty HTTP 204 and HTML 404,
+while the same phone could freshly log in through Web. Build 4.2.0 (1) therefore
+replaces authentication's URLSession transfers with pinned libcurl 8.22.0 and
+Mbed TLS 3.6.6, enforcing HTTP/1.1. Cookie scope and manual redirects remain
+unchanged, and signatures still cover the exact body sent. Native catalog and
+IPA downloads retain the upstream implementation.
+
+The TLS adapter uses verified Mozilla CA roots dated 2026-09-25, checks both
+peer certificates and host names, performs transfers off the UI thread and
+supports cancellation. A local HTTPS fixture verifies body preservation,
+multiple Set-Cookie headers and rejection of untrusted TLS certificates.
+No credentials, response bodies or signature values appear in diagnostics.
+
+Passing checks does not prove Apple accepts a real login. The phone still
+connects directly to Apple while Web exits through Wisp's server; network exit
+and signer acceptance remain variables for the next on-device test. No Worker,
+Container, Wisp or WKWebView dependency is added to the native app.

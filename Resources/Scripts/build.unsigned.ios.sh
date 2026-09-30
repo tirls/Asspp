@@ -24,6 +24,7 @@ keys = ('SRCROOT', 'DERIVED_FILE_DIR', 'TARGET_BUILD_DIR', 'UNLOCALIZED_RESOURCE
         'PLATFORM_NAME', 'ARCHS', 'SDKROOT', 'IPHONEOS_DEPLOYMENT_TARGET')
 env.update({key: target[key] for key in keys})
 subprocess.run(['/usr/bin/python3', 'Resources/Scripts/prepare.sap.py'], env=env, check=True)
+subprocess.run(['/usr/bin/python3', 'Resources/Scripts/prepare.curl.py'], env=env, check=True)
 PY
 xcodebuild -workspace Asspp.xcworkspace -scheme Asspp -configuration Release \
   -derivedDataPath "$RUNNER_TEMP/AssppBuild" -destination 'generic/platform=iOS' \
@@ -48,6 +49,7 @@ with (app / 'Info.plist').open('rb') as stream:
     info = plistlib.load(stream)
 assert info['CFBundleIdentifier'] == 'wiki.qaq.Asspp'
 assert 'iPhoneOS' in info['CFBundleSupportedPlatforms']
+assert hashlib.sha256((app / 'AuthenticationTLS/cacert.pem').read_bytes()).hexdigest() == 'a41b5d356aea97a529fe27e0f7316d2f9d946d75927476cf9cf1b90637d00505'
 for name, expected in sap.ASSETS.items():
     assert not (app / 'SAPAssets' / name).exists(), name
     data = zlib.decompress((app / 'SAPAssets' / (name + '.sapz')).read_bytes())

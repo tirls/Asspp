@@ -1,39 +1,50 @@
 import Foundation
 
-/// Login requests use separate connections but retain one private cookie jar.
+/// Browser-style HTTP/1.1 and Mbed TLS, with an account's private cookie jar.
 final class StoreAuthenticationTransport {
-    private final class NoRedirect: NSObject, URLSessionTaskDelegate {
-        func urlSession(_: URLSession, task _: URLSessionTask,
-                        willPerformHTTPRedirection _: HTTPURLResponse,
-                        newRequest _: URLRequest,
-                        completionHandler: @escaping (URLRequest?) -> Void)
-        {
-            completionHandler(nil)
-        }
-    }
+    let cookieStorage = URLSessionConfiguration.ephemeral.httpCookieStorage!
+    private let caBundleURL: URL?
 
-    let cookieStorage: HTTPCookieStorage
-
-    init() {
-        cookieStorage = URLSessionConfiguration.ephemeral.httpCookieStorage!
+    init(caBundleURL: URL? = Bundle.main.resourceURL?.appendingPathComponent("AuthenticationTLS/cacert.pem")) {
+        self.caBundleURL = caBundleURL
     }
 
     func send(_ request: URLRequest) async throws -> (Data, HTTPURLResponse) {
-        let configuration = URLSessionConfiguration.ephemeral
-        configuration.timeoutIntervalForRequest = 30
-        configuration.timeoutIntervalForResource = 60
-        configuration.urlCredentialStorage = nil
-        configuration.urlCache = nil
-        configuration.httpCookieStorage = cookieStorage
-        let session = URLSession(configuration: configuration, delegate: NoRedirect(), delegateQueue: nil)
-        defer { session.invalidateAndCancel() }
-        var request = request
-        // HTTP/1.1 also explicitly disables keep-alive; each session owns its HTTP/2 pool.
-        request.setValue("close", forHTTPHeaderField: "Connection")
-        let (data, response) = try await session.data(for: request)
-        guard let response = response as? HTTPURLResponse else {
-            throw StoreAuthenticationError.serviceResponse(0)
+        try Task.checkCancellation()
+        guard let url = request.url, let caBundleURL,
+              FileManager.default.fileExists(atPath: caBundleURL.path) else {
+            throw StoreAuthenticationError.invalidConfiguration
         }
-        return (data, response)
+        var request = request
+        if let cookies = cookieStorage.cookies(for: url), !cookies.isEmpty {
+            for (name, value) in HTTPCookie.requestHeaderFields(with: cookies) {
+                request.setValue(value, forHTTPHeaderField: name)
+            }
+        }
+        let transfer = CurlAuthenticationClient()
+        let result = try await withTaskCancellationHandler {
+            try await Task.detached(priority: .userInitiated) {
+                try transfer.performRequest(request, caBundlePath: caBundleURL.path)
+            }.value
+        } onCancel: {
+            transfer.cancel()
+        }
+        try Task.checkCancellation()
+        var fields: [String: String] = [:]
+        for pair in result.headers where pair.count == 2 {
+            if pair[0] == "set-cookie" {
+                // Parse separately: Expires dates contain commas.
+                let cookies = HTTPCookie.cookies(withResponseHeaderFields: ["Set-Cookie": pair[1]], for: url)
+                cookieStorage.setCookies(cookies, for: url, mainDocumentURL: nil)
+            } else {
+                fields[pair[0]] = pair[1]
+            }
+        }
+        guard result.httpVersion == 2,
+              let response = HTTPURLResponse(url: url, statusCode: result.statusCode,
+                                             httpVersion: "HTTP/1.1", headerFields: fields) else {
+            throw StoreAuthenticationError.serviceResponse(result.statusCode)
+        }
+        return (result.data, response)
     }
 }
