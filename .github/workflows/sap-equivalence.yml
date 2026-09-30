@@ -1,0 +1,37 @@
+name: Web and native SAP equivalence
+
+on:
+  push:
+    branches: [codex/native-sap-equivalence]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  compare:
+    runs-on: macos-26
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
+      - name: Build verified SAP interpreter
+        run: |
+          set -euo pipefail
+          command -v cmake >/dev/null || brew install cmake
+          env DERIVED_FILE_DIR="$RUNNER_TEMP/SAPReplay" SRCROOT="$PWD" \
+            TARGET_BUILD_DIR="$RUNNER_TEMP/SAPReplay" UNLOCALIZED_RESOURCES_FOLDER_PATH=Resources \
+            PLATFORM_NAME=macosx ARCHS="$(uname -m)" MACOSX_DEPLOYMENT_TARGET=15.0 \
+            SDKROOT="$(xcrun --sdk macosx --show-sdk-path)" \
+            /usr/bin/python3 Resources/Scripts/prepare.sap.py
+      - name: Compare Web handshake and signatures without credentials
+        run: |
+          set -euo pipefail
+          /usr/bin/python3 Resources/Tests/PrepareSAPReplay.py "$RUNNER_TEMP/SAPReplay.cpp"
+          xcrun clang++ -std=c++20 -O2 -fobjc-arc -framework Foundation \
+            -I Asspp/Backend/AppStore/SAP -I "$RUNNER_TEMP/SAPReplay/SAP/source/include" \
+            Resources/Tests/SAPWebEquivalenceChecks.mm "$RUNNER_TEMP/SAPReplay.cpp" \
+            Asspp/Backend/AppStore/SAP/MachImage.cpp \
+            "$RUNNER_TEMP/SAPReplay/SAP/lib/libunicorn.a" -o "$RUNNER_TEMP/sap-equivalence"
+          "$RUNNER_TEMP/sap-equivalence" "$RUNNER_TEMP/SAPReplay/SAP/assets" Resources/Tests/WebSAPVector.json
