@@ -8,11 +8,11 @@ struct AuthenticationProtocolChecks {
         _ = try StoreAuthenticationProtocol.authenticationURL(auth.replacingOccurrences(of: "buy.", with: "p25-buy."))
         for path in ["/auth/v1/native", "/auth/v1/native/", "/auth/v1/native/fast", "/auth/v1/native/fast/"] {
             let native = try StoreAuthenticationProtocol.initialAuthenticationURL("https://auth.itunes.apple.com" + path + "?guid=old&x=1", guid: "024153535050")
-            precondition(native.path == StoreAuthenticationProtocol.nativeAuthenticationPath)
+            precondition(URLComponents(url: native, resolvingAgainstBaseURL: false)!.path == StoreAuthenticationProtocol.nativeAuthenticationPath)
             precondition(URLComponents(url: native, resolvingAgainstBaseURL: false)!.queryItems!.filter { $0.name == "guid" }.map { $0.value } == ["024153535050"])
         }
         let fallback = try StoreAuthenticationProtocol.initialAuthenticationURL("", guid: "024153535050")
-        precondition(fallback.host == "auth.itunes.apple.com" && fallback.path == StoreAuthenticationProtocol.nativeAuthenticationPath)
+        precondition(fallback.host == "auth.itunes.apple.com" && URLComponents(url: fallback, resolvingAgainstBaseURL: false)!.path == StoreAuthenticationProtocol.nativeAuthenticationPath)
         let initial = try StoreAuthenticationProtocol.initialAuthenticationURL(auth + "?guid=old&x=1&guid=duplicate", guid: "024153535050")
         let query = URLComponents(url: initial, resolvingAgainstBaseURL: false)!.queryItems!
         precondition(query.filter { $0.name == "guid" }.map { $0.value } == ["024153535050"])
