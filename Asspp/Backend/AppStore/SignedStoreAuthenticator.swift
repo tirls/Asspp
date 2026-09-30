@@ -74,7 +74,7 @@ actor SignedStoreAuthenticator {
         let exchange = try signer.exchangeData(certificate, version: 200)
         var setup = URLRequest(url: setupURL)
         setup.httpMethod = "POST"
-        setup.setValue("application/x-apple-plist", forHTTPHeaderField: "Content-Type")
+        setup.setValue("application/x-plist", forHTTPHeaderField: "Content-Type")
         setup.httpBody = try PropertyListSerialization.data(fromPropertyList: ["sign-sap-setup-buffer": exchange], format: .xml, options: 0)
         let (setupData, setupResponse) = try await send(setup)
         guard setupResponse.statusCode == 200,

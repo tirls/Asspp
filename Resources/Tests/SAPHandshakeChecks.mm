@@ -12,7 +12,7 @@ static NSDictionary *FetchPlist(NSURLSession *session, NSURL *url, NSDictionary 
         [request setValue:@"application/xml" forHTTPHeaderField:@"Accept"];
     if (body) {
         request.HTTPMethod = @"POST";
-        [request setValue:@"application/x-apple-plist" forHTTPHeaderField:@"Content-Type"];
+        [request setValue:@"application/x-plist" forHTTPHeaderField:@"Content-Type"];
         request.HTTPBody = [NSPropertyListSerialization dataWithPropertyList:body format:NSPropertyListXMLFormat_v1_0 options:0 error:nil];
     }
     dispatch_semaphore_t done = dispatch_semaphore_create(0);
