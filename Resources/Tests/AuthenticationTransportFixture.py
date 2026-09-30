@@ -18,7 +18,7 @@ class Handler(BaseHTTPRequestHandler):
 
     def do_POST(self):
         body = self.rfile.read(int(self.headers.get("Content-Length", 0)))
-        requests.append((self.client_address, self.path, body, self.headers))
+        requests.append((self.client_address, self.path, body, self.headers, self.request_version))
         index = len(requests)
         payload = b"fixture-success" if index == 3 else b""
         self.send_response({1: 204, 2: 302, 3: 200}.get(index, 500))
@@ -57,12 +57,13 @@ thread = threading.Thread(target=server.serve_forever, daemon=True)
 thread.start()
 try:
     subprocess.run([sys.argv[1], f"https://localhost:{server.server_port}",
-                    str(root / 'cert.pem'), sys.argv[2]], check=True, timeout=45)
+                    str(root / 'cert.pem'), sys.argv[2]], check=True, timeout=90)
     assert len(requests) == 3, "Automatic redirect or unexpected retry"
     assert len({request[0] for request in requests}) == 3, "Reused a TCP connection"
     assert [request[1] for request in requests] == ["/login", "/login", "/pod"]
     assert all(request[2] == b"synthetic-body" for request in requests)
     assert all(request[3]["X-Apple-ActionSignature"] == "synthetic-signature" for request in requests)
+    assert all(request[4] == "HTTP/1.1" for request in requests)
     assert all(request[3].get('Host', '').startswith('localhost:') for request in requests)
     assert all("synthetic-session=fixture" in request[3].get("Cookie", "") for request in requests[1:])
 finally:

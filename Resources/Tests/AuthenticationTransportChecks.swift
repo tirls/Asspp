@@ -28,6 +28,12 @@ struct AuthenticationTransportChecks {
         } catch let error as NSError {
             precondition(error.domain == "Asspp.CurlTransport" && error.code == 60)
         }
+        var publicRequest = URLRequest(url: URL(string: "https://s.mzstatic.com/sap/setupCert.plist")!)
+        publicRequest.setValue("Configurator/2.17 (Macintosh; OS X 15.2; 24C5089c) AppleWebKit/0620.1.16.11.6", forHTTPHeaderField: "User-Agent")
+        let (certificate, certificateResponse) = try await StoreAuthenticationTransport(caBundleURL: publicCA).send(publicRequest)
+        precondition(certificateResponse.statusCode == 200)
+        precondition(StoreProtocol.plist(certificate)?["sign-sap-setup-cert"] is Data)
+        print("Public Apple certificate fetched over curl/Mbed TLS with verified CA roots.")
         print("Authentication transport checks passed: Mbed TLS, HTTP/1.1, verified certificates, retained cookies/body, manual redirect.")
     }
 }

@@ -79,7 +79,7 @@ def main():
         run('cmake', '-S', str(curl_source), '-B', str(build / 'curl'), *common,
             '-DBUILD_CURL_EXE=OFF', '-DBUILD_TESTING=OFF', '-DBUILD_STATIC_LIBS=ON', '-DHTTP_ONLY=ON',
             '-DCURL_USE_MBEDTLS=ON', '-DCURL_USE_OPENSSL=OFF', '-DCURL_USE_LIBPSL=OFF',
-            '-DCURL_USE_LIBSSH2=OFF', '-DCURL_USE_GSSAPI=OFF', '-DCURL_USE_LIBIDN2=OFF',
+            '-DCURL_USE_LIBSSH2=OFF', '-DCURL_USE_GSSAPI=OFF', '-DUSE_LIBIDN2=OFF',
             '-DCURL_USE_PKGCONFIG=OFF', '-DCURL_ZLIB=OFF', '-DCURL_BROTLI=OFF', '-DCURL_ZSTD=OFF',
             '-DUSE_NGHTTP2=OFF', '-DUSE_NGTCP2=OFF', '-DUSE_QUICHE=OFF',
             '-DCURL_CA_BUNDLE=none', '-DCURL_CA_PATH=none',

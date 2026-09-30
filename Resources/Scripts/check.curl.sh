@@ -16,7 +16,7 @@ swiftc Asspp/Backend/AppStore/StoreProtocol.swift \
   Resources/Tests/AuthenticationTransportChecks.swift \
   -import-objc-header Asspp/Backend/AppStore/CurlAuthenticationClient.h \
   "$curl_check_dir/transport.o" -L "$curl_root/lib" \
-  -lcurl -lmbedtls -lmbedx509 -lmbedcrypto -framework Foundation \
+  -lcurl -lmbedtls -lmbedx509 -lmbedcrypto -framework Foundation -framework SystemConfiguration \
   -o "$curl_check_dir/transport-checks"
 /usr/bin/python3 Resources/Tests/AuthenticationTransportFixture.py \
   "$curl_check_dir/transport-checks" "$curl_root/cacert.pem"
