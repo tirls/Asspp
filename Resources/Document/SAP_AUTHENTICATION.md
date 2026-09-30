@@ -64,3 +64,24 @@ Passing checks does not prove Apple accepts a real login. The phone still
 connects directly to Apple while Web exits through Wisp's server; network exit
 and signer acceptance remain variables for the next on-device test. No Worker,
 Container, Wisp or WKWebView dependency is added to the native app.
+
+## Build 4.2.0 (2): match actual Web platform shim results
+
+Build (1) still returned empty 204 responses on both Wi-Fi and cellular. The
+working Web WASM register bridge converts negative floating-point shim results
+to unsigned integers with saturation: writing -1 actually writes zero. Its
+comments describing an all-ones handle did not match the observed execution.
+Native SAP instead used a non-null UINT64_MAX handle for unavailable platform
+objects. Build (2) matches Web's actual platform-service results.
+
+The standalone Web/native comparison uses public setup data, a synthetic login
+body, and controlled randomness and guest timestamp instructions. With the old
+native platform profile, setup bytes differed at offset 10. Matching Web's
+platform results made the 354-byte setup request and all three 501-byte
+signatures match byte for byte. This fixture runs in CI using the production
+SAP sources with only time/randomness controlled in a temporary translation
+unit. Production retains system randomness and real guest timestamps.
+
+The fixture is at Resources/Tests/WebSAPVector.json. It contains no real account
+credentials, tokens or cookies. Passing equivalence establishes this tested
+cryptographic behavior, not real-account acceptance by Apple's login service.

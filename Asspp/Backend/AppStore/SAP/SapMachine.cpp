@@ -24,12 +24,15 @@ static inline void UC_CHECK(uc_err err, const char* what) {
 
 static inline uint64_t AlignUp(uint64_t v, uint64_t a) { return (v + a - 1) & ~(a - 1); }
 
+// Match the working AssppWeb WASM platform profile: its double-to-uint64
+// boundary saturates negative shim results to zero. Nonexistent platform
+// objects therefore return zero, rather than a non-null all-ones handle.
+// This is guest compatibility, not a replacement for host OS service calls.
 // From the Go source:
-//   fakeHandle   = math.MaxUint64
 //   coreFPFile   = 3
 //   icxsPath     = "./../CoreFP.icxs"
 //   coreFPPath   = "/System/Library/PrivateFrameworks/CoreFP.framework/CoreFP"
-static constexpr uint64_t kFakeHandle = UINT64_MAX;
+static constexpr uint64_t kFakeHandle = 0;
 static constexpr uint64_t kCoreFPFile = 3;
 static const char* kIcxsPath         = "./../CoreFP.icxs";
 static const char* kCoreFPDlPath     = "/System/Library/PrivateFrameworks/CoreFP.framework/CoreFP";
@@ -454,11 +457,11 @@ void SapShims::RegisterPlatformServices() {
         "_pthread_rwlock_wrlock","_pthread_rwlock_wrlock$UNIX2003",
     }, [this]() { SetResult(0); });
 
-    // ── returnMinusOne group ───────────────────────────────────────────────────
+    // ── unavailable services (Web's -1 conversion yields zero) ────────────────
     AddAliases({
         "_fcntl", "_fcntl$UNIX2003",
         "_lstat$INODE64", "_statfs", "_statfs$INODE64",
-    }, [this]() { SetResult(UINT64_MAX); });
+    }, [this]() { SetResult(0); });
 
     // ── abort group ───────────────────────────────────────────────────────────
     AddAliases({"_abort", "___stack_chk_fail", "dyld_stub_binder"},
@@ -581,12 +584,12 @@ void SapShims::RegisterPlatformServices() {
             icxsOffset_ = 0;
             SetResult(kCoreFPFile);
         } else {
-            SetResult(UINT64_MAX); // -1
+            SetResult(0); // Web's negative open result at the WASM boundary
         }
     });
     AddAliases({"_read", "_read$UNIX2003"}, [this]() {
         uint64_t fd  = Arg(0), buf = Arg(1), req = Arg(2);
-        if (fd != kCoreFPFile) { SetResult(UINT64_MAX); return; }
+        if (fd != kCoreFPFile) { SetResult(0); return; }
         size_t rem  = icxs_.size() - icxsOffset_;
         size_t nread = std::min(rem, static_cast<size_t>(req));
         if (nread) GuestWrite(buf, icxs_.data() + icxsOffset_, nread);
@@ -621,7 +624,7 @@ void SapShims::RegisterPlatformServices() {
     // _get_mac_address resolves to the real CommerceCore export, as in Web.
 
     // ── sysctl / sysctlbyname ─────────────────────────────────────────────────
-    AddFunction("_sysctl",       [this]() { SetResult(UINT64_MAX); });
+    AddFunction("_sysctl",       [this]() { SetResult(0); });
     AddFunction("_sysctlbyname", [this]() {
         uint64_t lenAddr = Arg(2);
         if (lenAddr) GuestWrite64(lenAddr, 0);

@@ -24,6 +24,7 @@ actor SignedStoreAuthenticator {
     private func performAuthentication(email: String, password: String, code: String, guid: String, cookies: [Cookie]) async throws -> ApplePackage.Account {
         try Task.checkCancellation()
         logger.info("Apple authentication: transport=\(CurlAuthenticationClient.runtimeDescription())")
+        logger.info("Apple authentication: SAP profile=web-platform-v1")
         let normalizedCode = code.filter { !$0.isWhitespace }
         restore(cookies)
         let hardware = try StoreAuthenticationProtocol.hardwareID(guid: guid)
