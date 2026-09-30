@@ -24,7 +24,7 @@ final class StoreAuthenticationTransport {
         let transfer = CurlAuthenticationClient()
         let result = try await withTaskCancellationHandler {
             try await Task.detached(priority: .userInitiated) {
-                try transfer.performRequest(request, caBundlePath: caBundleURL.path)
+                try transfer.perform(request, caBundlePath: caBundleURL.path)
             }.value
         } onCancel: {
             transfer.cancel()
