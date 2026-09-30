@@ -38,6 +38,43 @@ bool SAPReplayTimestampP(uc_engine *engine, void *data) {
         throw std::runtime_error("Cannot control fixture timestamp auxiliary register");
     return true;
 }
+static void TimestampInstruction(uc_engine *engine, uint64_t address, uint32_t size, void *) {
+    uint8_t bytes[3] = {};
+    if (uc_mem_read(engine, address, bytes, 3) != UC_ERR_OK)
+        throw std::runtime_error("Cannot read fixture instruction");
+    if (size == 2 && bytes[0] == 0x0f && bytes[1] == 0x31) {
+        SAPReplayTimestamp(engine, nullptr);
+    } else if (size == 3 && bytes[0] == 0x0f && bytes[1] == 1 && bytes[2] == 0xf9) {
+        SAPReplayTimestampP(engine, nullptr);
+    } else return;
+    const uint64_t next = address + size;
+    if (uc_reg_write(engine, UC_X86_REG_RIP, &next) != UC_ERR_OK)
+        throw std::runtime_error("Cannot advance fixture timestamp instruction");
+}
+void SAPInstallTimestampHooks(uc_engine *engine) {
+    uc_mem_region *regions;
+    uint32_t count;
+    if (uc_mem_regions(engine, &regions, &count) != UC_ERR_OK)
+        throw std::runtime_error("Cannot inspect fixture image regions");
+    size_t candidates = 0;
+    for (uint32_t i = 0; i < count; ++i) {
+        if (regions[i].begin < 0x100000000000 || regions[i].begin >= 0x100100000000) continue;
+        std::vector<uint8_t> data(regions[i].end - regions[i].begin + 1);
+        if (uc_mem_read(engine, regions[i].begin, data.data(), data.size()) != UC_ERR_OK)
+            throw std::runtime_error("Cannot read fixture image");
+        for (size_t offset = 0; offset + 2 < data.size(); ++offset) {
+            if (data[offset] != 0x0f || (data[offset + 1] != 0x31 &&
+                !(data[offset + 1] == 1 && data[offset + 2] == 0xf9))) continue;
+            const uint64_t address = regions[i].begin + offset;
+            uc_hook hook;
+            if (uc_hook_add(engine, &hook, UC_HOOK_CODE, reinterpret_cast<void *>(TimestampInstruction), nullptr, address, address) != UC_ERR_OK)
+                throw std::runtime_error("Cannot install fixture timestamp hook");
+            ++candidates;
+        }
+    }
+    uc_free(regions);
+    std::cout << "Native timestamp candidates: " << candidates << std::endl;
+}
 
 static std::vector<uint8_t> Decode(NSString *value) {
     NSData *data = [[NSData alloc] initWithBase64EncodedString:value options:0];
