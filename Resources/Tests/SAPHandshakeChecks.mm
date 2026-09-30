@@ -6,7 +6,7 @@
 // Only public setup requests and a synthetic body. Never authenticate an account.
 static NSDictionary *FetchPlist(NSURLSession *session, NSURL *url, NSDictionary *body = nil) {
     NSMutableURLRequest *request = [NSMutableURLRequest requestWithURL:url];
-    [request setValue:@"Configurator/2.17 (Macintosh; Intel Mac OS X 15_0)" forHTTPHeaderField:@"User-Agent"];
+    [request setValue:@"Configurator/2.17 (Macintosh; OS X 15.2; 24C5089c) AppleWebKit/0620.1.16.11.6" forHTTPHeaderField:@"User-Agent"];
     [request setValue:@"application/xml" forHTTPHeaderField:@"Accept"];
     if (body) {
         request.HTTPMethod = @"POST";
@@ -28,8 +28,10 @@ static NSDictionary *FetchPlist(NSURLSession *session, NSURL *url, NSDictionary 
         [task cancel];
         throw std::runtime_error("Public SAP setup request timed out");
     }
-    if (failure || status != 200 || result.length > 1024 * 1024)
+    if (failure || status != 200 || result.length > 1024 * 1024) {
+        std::cerr << "Public setup HTTP " << status << ", network error " << failure.code << std::endl;
         throw std::runtime_error("Public SAP setup request failed");
+    }
     id plist = [NSPropertyListSerialization propertyListWithData:result options:0 format:NULL error:NULL];
     if (!plist) {
         NSString *text = [[NSString alloc] initWithData:result encoding:NSUTF8StringEncoding];

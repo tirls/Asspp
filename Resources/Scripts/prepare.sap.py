@@ -36,6 +36,19 @@ def valid_asset(path, spec):
     return path.is_file() and path.stat().st_size == spec[0] and hashlib.sha256(path.read_bytes()).hexdigest() == spec[1]
 
 
+def bundle_assets(assets, resources):
+    resources.mkdir(parents=True, exist_ok=True)
+    for name, spec in ASSETS.items():
+        if not valid_asset(assets / name, spec):
+            raise RuntimeError(f'Invalid SAP asset before packaging: {name}')
+        # Signing tools must treat the interpreted Mach-O images as data, not code.
+        packed = zlib.compress((assets / name).read_bytes(), level=9)
+        target = resources / (name + '.sapz')
+        if not target.is_file() or target.read_bytes() != packed:
+            atomic_write(target, packed)
+        (resources / name).unlink(missing_ok=True)
+
+
 def apple_range(start, end=None):
     request = urllib.request.Request(APPLE_URL, headers={'Range': f'bytes={start}-{end if end is not None else ""}'})
     response = urllib.request.urlopen(request, timeout=90)
@@ -199,10 +212,7 @@ def prepare_build(root):
     else:
         temporary.unlink()
     resources = Path(os.environ['TARGET_BUILD_DIR']) / os.environ['UNLOCALIZED_RESOURCES_FOLDER_PATH'] / 'SAPAssets'
-    resources.mkdir(parents=True, exist_ok=True)
-    for name in ASSETS:
-        if not valid_asset(resources / name, ASSETS[name]):
-            shutil.copy2(assets / name, resources / name)
+    bundle_assets(assets, resources)
     # Ship the exact interpreter source alongside its license notices.
     source_archive = resources / 'Unicorn-source.tar.gz'
     if not source_archive.is_file() or hashlib.sha256(source_archive.read_bytes()).hexdigest() != ARCHIVE_SHA256:

@@ -1,9 +1,15 @@
 #import "SAPContext.h"
 #import <CommonCrypto/CommonDigest.h>
+#include <zlib.h>
 #include "SapMachine.h"
 
 static std::vector<uint8_t> ReadVerifiedAsset(NSURL *root, NSString *name, NSUInteger size, NSString *hash) {
-    NSData *data = [NSData dataWithContentsOfURL:[root URLByAppendingPathComponent:name]];
+    NSData *packed = [NSData dataWithContentsOfURL:[root URLByAppendingPathComponent:[name stringByAppendingString:@".sapz"]]];
+    if (!packed.length || packed.length > size + 1024) throw std::runtime_error("Missing or truncated SAP assets. Rebuild the app.");
+    NSMutableData *data = [NSMutableData dataWithLength:size];
+    uLongf actualSize = size;
+    if (uncompress(static_cast<Bytef *>(data.mutableBytes), &actualSize, static_cast<const Bytef *>(packed.bytes), packed.length) != Z_OK || actualSize != size)
+        throw std::runtime_error("SAP asset integrity check failed. Rebuild the app.");
     if (data.length != size) throw std::runtime_error("Missing or truncated SAP assets. Rebuild the app.");
     unsigned char digest[CC_SHA256_DIGEST_LENGTH];
     CC_SHA256(data.bytes, (CC_LONG)data.length, digest);

@@ -5,6 +5,8 @@ import io
 from pathlib import Path
 import tempfile
 import unittest
+from unittest.mock import patch
+import zlib
 
 spec = importlib.util.spec_from_file_location("sap_build", Path(__file__).parents[1] / "Scripts/prepare.sap.py")
 sap = importlib.util.module_from_spec(spec)
@@ -44,6 +46,23 @@ class SAPBuildChecks(unittest.TestCase):
             sap.atomic_write(path, b"invalid fixture!")
             self.assertFalse(sap.valid_asset(path, expected))
             self.assertEqual(list(Path(directory).iterdir()), [path])
+
+    def test_bundled_images_are_compressed_data_with_original_hash(self):
+        with tempfile.TemporaryDirectory() as directory:
+            assets, resources = Path(directory) / 'assets', Path(directory) / 'bundle'
+            assets.mkdir(); resources.mkdir()
+            data = b'\xcf\xfa\xed\xfe' + b'Mach-O fixture' * 100
+            expected = (len(data), hashlib.sha256(data).hexdigest())
+            (assets / 'CoreFP').write_bytes(data)
+            (resources / 'CoreFP').write_bytes(b'old raw image')
+            with patch.dict(sap.ASSETS, {'CoreFP': expected}, clear=True):
+                sap.bundle_assets(assets, resources)
+                self.assertFalse((resources / 'CoreFP').exists())
+                packed = (resources / 'CoreFP.sapz').read_bytes()
+                self.assertNotEqual(packed[:4], data[:4])
+                self.assertEqual(zlib.decompress(packed), data)
+                sap.bundle_assets(assets, resources)
+                self.assertEqual((resources / 'CoreFP.sapz').read_bytes(), packed)
 
 
 if __name__ == "__main__":

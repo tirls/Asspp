@@ -33,9 +33,17 @@ xcrun clang++ -std=c++20 -O1 -g -fsanitize=address,undefined \
 "$sap_check_dir/runtime-checks"
 
 # Exercise the actual Objective-C bridge, verified Apple assets and full interpreter.
-xcrun clang++ -std=c++20 -O2 -fobjc-arc -framework Foundation \
+xcrun clang++ -std=c++20 -O2 -fobjc-arc -framework Foundation -lz \
     -I Asspp/Backend/AppStore/SAP -I "$sap_runtime_dir/source/include" \
     Resources/Tests/SAPHandshakeChecks.mm Asspp/Backend/AppStore/SAP/SAPContext.mm \
     Asspp/Backend/AppStore/SAP/SapMachine.cpp Asspp/Backend/AppStore/SAP/MachImage.cpp \
     "$sap_runtime_dir/lib/libunicorn.a" -o "$sap_check_dir/handshake-checks"
-"$sap_check_dir/handshake-checks" "$sap_runtime_dir/assets"
+SAP_RUNTIME_DIR="$sap_runtime_dir" SAP_CHECK_DIR="$sap_check_dir" /usr/bin/python3 - <<'PY'
+import importlib.util, os
+from pathlib import Path
+spec = importlib.util.spec_from_file_location('sap_build', 'Resources/Scripts/prepare.sap.py')
+sap = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(sap)
+sap.bundle_assets(Path(os.environ['SAP_RUNTIME_DIR']) / 'assets', Path(os.environ['SAP_CHECK_DIR']) / 'packed-assets')
+PY
+"$sap_check_dir/handshake-checks" "$sap_check_dir/packed-assets"

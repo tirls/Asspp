@@ -38,7 +38,7 @@ if codesign -dv "$app_path" 2>/dev/null; then
   exit 1
 fi
 APP_PATH="$app_path" python3 - <<'PY'
-import hashlib, importlib.util, os, plistlib
+import hashlib, importlib.util, os, plistlib, zlib
 from pathlib import Path
 spec = importlib.util.spec_from_file_location('sap_build', 'Resources/Scripts/prepare.sap.py')
 sap = importlib.util.module_from_spec(spec)
@@ -49,7 +49,9 @@ with (app / 'Info.plist').open('rb') as stream:
 assert info['CFBundleIdentifier'] == 'wiki.qaq.Asspp'
 assert 'iPhoneOS' in info['CFBundleSupportedPlatforms']
 for name, expected in sap.ASSETS.items():
-    assert sap.valid_asset(app / 'SAPAssets' / name, expected), name
+    assert not (app / 'SAPAssets' / name).exists(), name
+    data = zlib.decompress((app / 'SAPAssets' / (name + '.sapz')).read_bytes())
+    assert len(data) == expected[0] and hashlib.sha256(data).hexdigest() == expected[1], name
 print('Verified iOS package identity and all bundled SAP asset hashes.')
 PY
 mkdir -p "$RUNNER_TEMP/AssppPackage/Payload"

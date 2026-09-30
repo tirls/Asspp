@@ -82,4 +82,4 @@ LD_RUNPATH_SEARCH_PATHS[sdk=macosx*] = $(inherited) @executable_path/../Framewor
 SWIFT_OBJC_BRIDGING_HEADER = $(SRCROOT)/Asspp/Asspp-Bridging-Header.h
 HEADER_SEARCH_PATHS = $(inherited) "$(DERIVED_FILE_DIR)/SAP/source/include"
 LIBRARY_SEARCH_PATHS = $(inherited) "$(DERIVED_FILE_DIR)/SAP/lib"
-OTHER_LDFLAGS = $(inherited) -lunicorn
+OTHER_LDFLAGS = $(inherited) -lunicorn -lz

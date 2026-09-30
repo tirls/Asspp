@@ -15,6 +15,10 @@ The x86 SAP implementation runs locally in Unicorn's TCI interpreter. It does no
 allocate executable code buffers, require JIT, private Apple entitlements, or a
 Mac helper. Each login has its own short-lived emulator and ephemeral cookie jar.
 The app verifies all four Apple assets before loading them into the interpreter.
+The bundled `.sapz` files are zlib-compressed data. The app checks the exact
+decompressed size and SHA-256 before interpretation. Raw Mach-O images are kept
+only in the build cache, preventing IPA signing tools from rewriting those images
+as nested executable code.
 
 Foundation represents domain cookies with a leading dot; ApplePackage 1.2.7's
 request matcher expects the bare domain. Login export normalizes that format,
