@@ -4,8 +4,33 @@ import Foundation
 struct AuthenticationProtocolChecks {
     static func main() throws {
         let auth = "https://buy.itunes.apple.com/WebObjects/MZFinance.woa/wa/authenticate"
-        _ = try StoreAuthenticationProtocol.authenticationURL(auth)
-        _ = try StoreAuthenticationProtocol.authenticationURL(auth.replacingOccurrences(of: "buy.", with: "p25-buy."))
+        let podAuth = auth.replacingOccurrences(of: "buy.", with: "p25-buy.")
+        for endpoint in [auth, podAuth, auth.replacingOccurrences(of: ".com/", with: ".com:443/")] {
+            for suffix in ["", "?Pod=25&routing=a%2Fb+c"] {
+                let normalized = try StoreAuthenticationProtocol.authenticationURL(endpoint + suffix)
+                precondition(normalized.absoluteString == endpoint + "/" + suffix)
+                let repeated = try StoreAuthenticationProtocol.authenticationURL(normalized.absoluteString)
+                precondition(repeated == normalized)
+            }
+        }
+        let base = URL(string: auth + "/")!
+        for (location, expected) in [
+            (StoreAuthenticationProtocol.authenticationPath, auth + "/"),
+            (StoreAuthenticationProtocol.authenticationPath + "/", auth + "/"),
+            ("//p25-buy.itunes.apple.com" + StoreAuthenticationProtocol.authenticationPath, podAuth + "/"),
+            ("?routing=a%2Fb+c", auth + "/?routing=a%2Fb+c"),
+            ("../authenticate?Pod=25", auth + "/?Pod=25"),
+        ] {
+            let target = URL(string: location, relativeTo: base)!.absoluteURL
+            let normalized = try StoreAuthenticationProtocol.authenticationURL(target.absoluteString)
+            precondition(normalized.absoluteString == expected)
+        }
+        for status in [301, 302, 307, 308] {
+            precondition(StoreAuthenticationProtocol.isAuthenticationRedirect(status))
+        }
+        for status in [200, 204, 303, 401, 500] {
+            precondition(!StoreAuthenticationProtocol.isAuthenticationRedirect(status))
+        }
         for invalid in [
             auth.replacingOccurrences(of: "https:", with: "http:"),
             auth.replacingOccurrences(of: "buy.itunes.apple.com", with: "buy.itunes.apple.com.attacker.example"),
@@ -14,6 +39,9 @@ struct AuthenticationProtocolChecks {
             auth.replacingOccurrences(of: "buy.itunes.apple.com", with: "buy.itunes.apple.com:8080"),
             auth.replacingOccurrences(of: "/wa/authenticate", with: "/wa/buyProduct"),
             auth + "#fragment",
+            auth + "//",
+            auth + "/extra",
+            auth + "%2f",
         ] {
             do {
                 _ = try StoreAuthenticationProtocol.authenticationURL(invalid)

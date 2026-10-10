@@ -45,13 +45,22 @@ enum StoreAuthenticationProtocol {
 
     static func authenticationURL(_ value: String) throws -> URL {
         guard let url = URL(string: value), url.scheme == "https",
+              var components = URLComponents(url: url, resolvingAgainstBaseURL: false),
               url.user == nil, url.password == nil, url.fragment == nil,
               url.port == nil || url.port == 443,
               let host = url.host?.lowercased(),
               host == "buy.itunes.apple.com" || host.range(of: #"^p[0-9]+-buy\.itunes\.apple\.com$"#, options: .regularExpression) != nil,
-              url.path == authenticationPath
+              components.percentEncodedPath == authenticationPath || components.percentEncodedPath == authenticationPath + "/"
         else { throw StoreAuthenticationError.invalidRedirect }
-        return url
+        // The bare legacy endpoint can return an empty HTTP 204 even with a valid SAP signature.
+        components.path = authenticationPath + "/"
+        guard let normalized = components.url else { throw StoreAuthenticationError.invalidRedirect }
+        return normalized
+    }
+
+    static func isAuthenticationRedirect(_ status: Int) -> Bool {
+        // A 303 requests GET, so do not replay credentials for that status.
+        [301, 302, 307, 308].contains(status)
     }
 
     static func body(email: String, password: String, code: String, guid: String, attempt: Int) throws -> Data {

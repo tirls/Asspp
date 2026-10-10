@@ -108,6 +108,7 @@ struct ProductView: View {
     /// account. Sets `licenseHint` to a success message; callers handle errors.
     private func acquireLicense() async throws {
         guard let account else { return }
+        licenseHint = nil
         // Reuse SAP authentication, then reload the freshly persisted account.
         try await vm.rotate(id: account.id)
         try await vm.withAccount(id: account.id) { userAccount in
@@ -177,7 +178,12 @@ struct ProductView: View {
             Text("\(archive.formattedPrice ?? "N/A")")
             if archive.price == 0 {
                 AsyncButton {
-                    try await acquireLicense()
+                    do {
+                        try await acquireLicense()
+                    } catch {
+                        licenseHint = Hint(message: error.localizedDescription, color: .red)
+                        throw error
+                    }
                 } label: {
                     Text("Acquire License")
                 }

@@ -110,7 +110,7 @@ actor SignedStoreAuthenticator {
             if let value = response.value(forHTTPHeaderField: "pod") {
                 pod = value
             }
-            if response.statusCode == 302 {
+            if StoreAuthenticationProtocol.isAuthenticationRedirect(response.statusCode) {
                 guard let location = response.value(forHTTPHeaderField: "Location") else {
                     throw StoreAuthenticationError.serviceResponse(response.statusCode)
                 }
@@ -171,7 +171,9 @@ actor SignedStoreAuthenticator {
             if attempt == 3 || !StoreAuthenticationProtocol.retryable(status: result.1.statusCode, data: result.0) {
                 return result
             }
-            try await Task.sleep(for: .milliseconds(attempt * 250))
+            // Match ipatool's backoff instead of repeating transient failures within one second.
+            logger.info("Apple authentication: retry=\(attempt) delay=\(attempt * 10)s")
+            try await Task.sleep(for: .seconds(attempt * 10))
         }
         throw StoreAuthenticationError.tooManyAttempts
     }
