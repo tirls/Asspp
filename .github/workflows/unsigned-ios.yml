@@ -29,6 +29,12 @@ jobs:
             Asspp/Backend/AppStore/StoreAuthenticationProtocol.swift \
             Resources/Tests/AuthenticationProtocolChecks.swift -o "$RUNNER_TEMP/auth-checks"
           "$RUNNER_TEMP/auth-checks"
+      - name: Check download recovery
+        run: |
+          swiftc Asspp/Backend/AppStore/StoreProtocol.swift \
+            Asspp/Backend/AppStore/StoreVersionProtocol.swift \
+            Resources/Tests/DownloadProtocolChecks.swift -o "$RUNNER_TEMP/download-checks"
+          "$RUNNER_TEMP/download-checks"
       - name: Build unsigned iOS app
         run: bash Resources/Scripts/build.unsigned.ios.sh
       - name: Upload unsigned IPA and checksum

@@ -14,6 +14,32 @@ enum StoreVersionService {
         }
     }
 
+    static func download(account: inout Account, package: AppStore.AppPackage) async throws -> DownloadOutput {
+        let email = account.email
+        return try await product(account: &account, package: package, version: package.externalVersionID, operation: "download") { item in
+            guard let url = item["URL"] as? String, let parsedURL = URL(string: url),
+                  ["https", "http"].contains(parsedURL.scheme ?? ""), parsedURL.host != nil,
+                  var metadata = item["metadata"] as? [String: Any],
+                  let version = metadata["bundleShortVersionString"] as? String, !version.isEmpty,
+                  let build = metadata["bundleVersion"] as? String, !build.isEmpty,
+                  let signatures = item["sinfs"] as? [[String: Any]], !signatures.isEmpty
+            else { throw StoreVersionError.invalidPackage }
+            let sinfs = try signatures.map { signature -> Sinf in
+                guard let id = signature["id"] as? Int64,
+                      let data = signature["sinf"] as? Data, !data.isEmpty
+                else { throw StoreVersionError.invalidPackage }
+                return Sinf(id: id, sinf: data)
+            }
+            metadata["apple-id"] = email
+            metadata["userName"] = email
+            return try DownloadOutput(
+                downloadURL: url, sinfs: sinfs,
+                bundleShortVersionString: version, bundleVersion: build,
+                iTunesMetadata: PropertyListSerialization.data(fromPropertyList: metadata, format: .binary, options: 0)
+            )
+        }
+    }
+
     static func versions(account: inout Account, package: AppStore.AppPackage) async throws -> [String] {
         try await product(account: &account, package: package, version: nil, operation: "versions") { item in
             guard let metadata = item["metadata"] as? [String: Any],
