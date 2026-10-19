@@ -47,19 +47,14 @@ struct PackageView: View {
 
             Section {
                 CopyableRow(label: "Bundle ID", value: archive.software.bundleID, monospaced: true)
-                Text("Version")
-                    .badge(archive.software.version)
-                Text("Developer")
-                    .badge(archive.software.sellerName)
+                CopyableRow(label: "Version", value: archive.software.version)
+                CopyableRow(label: "Developer", value: archive.software.sellerName)
                 if !archive.software.primaryGenreName.isEmpty {
-                    Text("Category")
-                        .badge(archive.software.primaryGenreName)
+                    CopyableRow(label: "Category", value: archive.software.primaryGenreName)
                 }
-                Text("Compatibility")
-                    .badge("\(archive.software.minimumOsVersion)+")
+                CopyableRow(label: "Compatibility", value: "\(archive.software.minimumOsVersion)+")
                 if archive.software.userRatingCount > 0 {
-                    Text("Rating")
-                        .badge("\(String(format: "%.1f", archive.software.averageUserRating)) (\(archive.software.userRatingCount))")
+                    CopyableRow(label: "Rating", value: "\(String(format: "%.1f", archive.software.averageUserRating)) (\(archive.software.userRatingCount))")
                 }
             } header: {
                 Text("Details")
