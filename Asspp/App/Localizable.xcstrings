@@ -2747,6 +2747,22 @@
         }
       }
     },
+    "The first sign-in downloads about 175 MB of Apple components and can take a long time. Keep Asspp open." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The first sign-in downloads about 175 MB of Apple components and can take a long time. Keep Asspp open."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "首次登录需要下载约 175 MB 的 Apple 组件，可能需要较长时间。请保持 Asspp 在前台运行。"
+          }
+        }
+      }
+    },
     "The package can be installed later from the Downloads page." : {
       "localizations" : {
         "en" : {

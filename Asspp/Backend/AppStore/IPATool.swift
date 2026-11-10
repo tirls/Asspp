@@ -100,6 +100,7 @@ enum IPATool {
             }
             let _: Empty = try invoke("configure", Request(stateDirectory: stateDirectory.path, deviceIdentifier: deviceIdentifier))
             logger.info("ipatool Store engine configured")
+            startLogPump()
         } catch {
             logger.error("ipatool Store engine configuration failed: \(error.localizedDescription)")
         }
@@ -295,4 +296,49 @@ enum IPATool {
             requestID.withCString { AssppIPAToolCancel(UnsafeMutablePointer(mutating: $0)) }
         #endif
     }
+
+    // MARK: - Diagnostics
+
+    /// Moves the bridge's progress lines (operation timing, first-use download
+    /// of Apple components) into the app log and the visible status. Swift
+    /// initializes a static stored property exactly once, which starts one pump.
+    private static let logPump: Void = {
+        _ = Task.detached(priority: .utility) {
+            while true {
+                let lines = drainLog()
+                if !lines.isEmpty {
+                    for line in lines {
+                        logger.info("[ipatool] \(line)")
+                    }
+                    let latest = lines.last
+                    await MainActor.run { IPAToolStatus.shared.message = latest }
+                }
+                try? await Task.sleep(nanoseconds: 2_000_000_000)
+            }
+        }
+    }()
+
+    private static func startLogPump() {
+        _ = logPump
+    }
+
+    private static func drainLog() -> [String] {
+        #if ASSPP_IPATOOL
+            guard let output = AssppIPAToolDrainLog() else { return [] }
+            defer { AssppIPAToolFree(output) }
+            return String(cString: output)
+                .split(separator: "\n")
+                .map(String.init)
+        #else
+            return []
+        #endif
+    }
+}
+
+/// Latest ipatool progress line, shown while a long first-time sign-in runs.
+@Observable
+@MainActor
+final class IPAToolStatus {
+    static let shared = IPAToolStatus()
+    var message: String?
 }

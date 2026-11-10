@@ -16,11 +16,51 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"strings"
 	"sync"
+	"time"
 	"unsafe"
+
+	"github.com/majd/ipatool/v2/internal/sap/assets"
 )
 
 func main() {}
+
+func init() {
+	assets.SetProgressHandler(logf)
+}
+
+const logLimit = 200
+
+var (
+	logMu    sync.Mutex
+	logLines []string
+)
+
+// logf records diagnostics for the app's log viewer. Callers pass operation
+// names, durations and progress only, never account data or Apple replies.
+func logf(format string, arguments ...interface{}) {
+	logMu.Lock()
+	defer logMu.Unlock()
+
+	logLines = append(logLines, fmt.Sprintf(format, arguments...))
+	if len(logLines) > logLimit {
+		logLines = logLines[len(logLines)-logLimit:]
+	}
+}
+
+// AssppIPAToolDrainLog returns and clears pending diagnostic lines, one per
+// line. The returned string must be released with AssppIPAToolFree.
+//
+//export AssppIPAToolDrainLog
+func AssppIPAToolDrainLog() *C.char {
+	logMu.Lock()
+	lines := logLines
+	logLines = nil
+	logMu.Unlock()
+
+	return C.CString(strings.Join(lines, "\n"))
+}
 
 type response struct {
 	OK     bool        `json:"ok"`
@@ -112,7 +152,21 @@ func call(operation string, request []byte) (output string) {
 		}()
 	}
 
+	started := time.Now()
+	if operation != "configure" {
+		logf("%s started", operation)
+	}
+
 	result, err := handle(ctx, request)
+	if operation != "configure" {
+		status := "ok"
+		if err != nil {
+			status = classify(err).Code
+		}
+
+		logf("%s finished in %s (%s)", operation, time.Since(started).Round(100*time.Millisecond), status)
+	}
+
 	if err != nil {
 		if ctx.Err() != nil && !errors.Is(err, context.Canceled) {
 			err = fmt.Errorf("%w: %w", context.Canceled, err)

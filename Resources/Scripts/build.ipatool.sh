@@ -55,6 +55,22 @@ git -C "$IPATOOL_SOURCE" checkout -q --force "$IPATOOL_REVISION"
 git -C "$IPATOOL_SOURCE" clean -q -fdx
 cp -R "$SRCROOT/IPAToolBridge/overlay/." "$IPATOOL_SOURCE/"
 
+# The assets overlay wraps these two functions (chunked range reads, memoized
+# Load, progress reporting). Fail loudly if ipatool renamed them.
+patch_function() {
+    local file="$IPATOOL_SOURCE/$1" from="$2" to="$3"
+    FROM="$from" TO="$to" perl -0pi -e 's/^\Q$ENV{FROM}\E/$ENV{TO}/m or die "pattern not found\n"' "$file" || {
+        echo "[-] cannot patch $1: '$from' not found; update IPAToolBridge/overlay" >&2
+        exit 1
+    }
+}
+patch_function internal/sap/assets/assets.go \
+    "func Load(ctx context.Context) (Bundle, error) {" \
+    "func loadUncached(ctx context.Context) (Bundle, error) {"
+patch_function internal/sap/assets/http_range.go \
+    "func (r *remoteFile) ReadAt(data []byte, offset int64) (int, error) {" \
+    "func (r *remoteFile) readAtDirect(data []byte, offset int64) (int, error) {"
+
 echo "[*] preparing Unicorn TCI $UNICORN_REVISION"
 UNICORN_ARCHIVE="$WORK/unicorn-$UNICORN_REVISION.tar.gz"
 UNICORN_SOURCE="$WORK/unicorn-$UNICORN_REVISION"

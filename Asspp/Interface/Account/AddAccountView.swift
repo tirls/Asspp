@@ -81,8 +81,18 @@ struct AddAccountView: View {
             Section {
                 AsyncButton {
                     isAuthenticating = true
-                    defer { isAuthenticating = false }
-                    logger.info("starting authentication for user")
+                    IPAToolStatus.shared.message = nil
+                    #if os(iOS)
+                        // The first ipatool sign-in downloads Apple components for
+                        // a long time; auto-lock would suspend it.
+                        UIApplication.shared.isIdleTimerDisabled = true
+                    #endif
+                    defer {
+                        isAuthenticating = false
+                        #if os(iOS)
+                            UIApplication.shared.isIdleTimerDisabled = false
+                        #endif
+                    }
                     do {
                         // ipatool keeps its own per-account session across code attempts.
                         var session: ApplePackage.Authenticator?
@@ -114,7 +124,17 @@ struct AddAccountView: View {
                 .disabledWhenLoading()
                 .disabled(email.isEmpty || password.isEmpty)
             } footer: {
-                if let error {
+                if isAuthenticating, IPATool.isAvailable {
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("The first sign-in downloads about 175 MB of Apple components and can take a long time. Keep Asspp open.")
+                        if let progress = IPAToolStatus.shared.message {
+                            Text(progress)
+                                .font(.footnote.monospaced())
+                        }
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .foregroundStyle(.secondary)
+                } else if let error {
                     Text(error.localizedDescription)
                         .frame(maxWidth: .infinity, alignment: .leading)
                         .multilineTextAlignment(.leading)
