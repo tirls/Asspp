@@ -47,6 +47,7 @@ class AppStore {
                 _deviceIdentifier.wrappedValue = newValue
             }
             ApplePackage.Configuration.deviceIdentifier = newValue
+            IPATool.configure(deviceIdentifier: newValue)
         }
     }
 
@@ -95,12 +96,13 @@ class AppStore {
             }
         }
         ApplePackage.Configuration.deviceIdentifier = deviceIdentifier
+        IPATool.configure(deviceIdentifier: deviceIdentifier)
     }
 
     @discardableResult
-    func save(email: String, account: ApplePackage.Account) throws -> UserAccount {
+    func save(email: String, account: ApplePackage.Account, ipatool: IPAToolAccount? = nil) throws -> UserAccount {
         logger.info("saving account for user")
-        let account = UserAccount(account: account)
+        let account = UserAccount(account: account, ipatool: ipatool)
         let updatedAccounts = (accounts.filter { $0.account.email != email } + [account])
             .sorted { $0.account.email < $1.account.email }
         do {
@@ -122,6 +124,7 @@ class AppStore {
     func delete(id: UserAccount.ID) {
         logger.info("deleting account id: \(id)")
         accounts = accounts.filter { $0.id != id }
+        IPATool.forget(email: id)
     }
 
     var possibleRegions: Set<String> {

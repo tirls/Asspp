@@ -61,7 +61,11 @@ extension Downloads {
 extension Downloads {
     func startDownload(for package: AppStore.AppPackage, accountID: String) async throws {
         try await AppStore.this.withAccount(id: accountID) { account in
-            let downloadOutput = try await StoreDownloadService.download(account: &account.account, package: package)
+            let downloadOutput = if IPATool.isAvailable {
+                try await IPATool.resolveDownload(account: account.requireIPAToolAccount(), package: package)
+            } else {
+                try await StoreDownloadService.download(account: &account.account, package: package)
+            }
             let request = try Downloads.this.add(request: .init(
                 account: account,
                 package: package,

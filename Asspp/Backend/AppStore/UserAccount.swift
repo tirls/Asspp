@@ -15,9 +15,13 @@ extension AppStore {
         }
 
         var account: ApplePackage.Account
+        /// Session from the ipatool Store engine. Optional so accounts saved by
+        /// earlier versions still decode; they sign in again before downloading.
+        var ipatool: IPAToolAccount?
 
-        init(account: ApplePackage.Account) {
+        init(account: ApplePackage.Account, ipatool: IPAToolAccount? = nil) {
             self.account = account
+            self.ipatool = ipatool
         }
 
         static func == (lhs: UserAccount, rhs: UserAccount) -> Bool {

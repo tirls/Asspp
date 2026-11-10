@@ -129,3 +129,7 @@ Configuration/Developer.xcconfig
 References/
 
 Foundation/ApplePackage/
+
+# ipatool bridge build outputs (Resources/Scripts/build.ipatool.sh)
+Vendor/IPATool/
+Configuration/IPATool.generated.xcconfig

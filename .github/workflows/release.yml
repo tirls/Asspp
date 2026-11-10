@@ -56,6 +56,12 @@ jobs:
         with:
           packages: ldid findutils sed coreutils make
 
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: stable
+          cache: false
+
       # Output artifacts outside the repo: both compile scripts begin with
       # `git clean -fdx`, so an artifact left in the working tree would be
       # deleted by the next build step.

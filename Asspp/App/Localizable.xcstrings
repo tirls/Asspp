@@ -211,6 +211,22 @@
         }
       }
     },
+    "A verification code is required. Enter the code sent to your trusted device." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "A verification code is required. Enter the code sent to your trusted device."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "需要验证码。请输入发送到受信任设备的验证码。"
+          }
+        }
+      }
+    },
     "About" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -528,6 +544,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Apple 返回的安装包信息不完整或与请求的 App 不符。"
+          }
+        }
+      }
+    },
+    "Apple returned incomplete version information." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Apple returned incomplete version information."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Apple 返回的版本信息不完整。"
           }
         }
       }
@@ -2683,6 +2715,22 @@
         }
       }
     },
+    "The account session expired. Sign in to this account again." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The account session expired. Sign in to this account again."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "账户会话已过期。请重新登录此账户。"
+          }
+        }
+      }
+    },
     "The App Store API can be unstable. Retry if an error occurs." : {
       "localizations" : {
         "en" : {
@@ -2715,6 +2763,38 @@
         }
       }
     },
+    "The request was canceled." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The request was canceled."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "请求已取消。"
+          }
+        }
+      }
+    },
+    "This account does not have a license for this app. Acquire a license first." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "This account does not have a license for this app. Acquire a license first."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "此账户没有该 App 的许可。请先获取许可。"
+          }
+        }
+      }
+    },
     "This account is used to download this package. If you choose to AirDrop, your target device must sign in or previously signed in to this account and have at least one app installed." : {
       "localizations" : {
         "en" : {
@@ -2727,6 +2807,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "此账户用于下载此软件包。如果您选择使用 AirDrop，目标设备必须登录或曾登录此账户，并至少安装一个应用。"
+          }
+        }
+      }
+    },
+    "This build does not include the ipatool Store engine." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "This build does not include the ipatool Store engine."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "此版本未包含 ipatool 商店引擎。"
           }
         }
       }

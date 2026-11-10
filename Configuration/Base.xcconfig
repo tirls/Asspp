@@ -3,6 +3,9 @@
 
 #include "Version.xcconfig"
 
+// Present only after Resources/Scripts/build.ipatool.sh has built the ipatool bridge.
+#include? "IPATool.generated.xcconfig"
+
 // MARK: - App Identity
 
 PRODUCT_BUNDLE_IDENTIFIER = wiki.qaq.Asspp

@@ -2,9 +2,10 @@ name: Build App
 
 on:
   push:
-    branches: [main]
+    branches: [main, "feat/**"]
   pull_request:
     branches: [main]
+  workflow_dispatch:
 
 jobs:
   build-ios:
@@ -49,6 +50,12 @@ jobs:
         uses: dhinakg/procursus-action@main
         with:
           packages: ldid findutils sed coreutils make
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: stable
+          cache: false
 
       - name: Build
         run: |

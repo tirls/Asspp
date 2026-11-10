@@ -26,6 +26,12 @@ CODE_SIGNING_REQUIRED = NO
 CODE_SIGNING_ALLOWED = NO
 EOF
 
+# Store AMD proofs and kbsync downloads come from the ipatool bridge. Set
+# ASSPP_IPATOOL=0 to build the ApplePackage-only app instead.
+if [ "${ASSPP_IPATOOL:-1}" != "0" ]; then
+    bash "$SRCROOT/Resources/Scripts/build.ipatool.sh" "$SRCROOT"
+fi
+
 xcodebuild -workspace "$WORKSPACE" \
     -scheme "$SCHEME" \
     -configuration Release \

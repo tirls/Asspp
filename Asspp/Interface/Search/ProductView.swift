@@ -108,12 +108,16 @@ struct ProductView: View {
     /// account. Sets `licenseHint` to a success message; callers handle errors.
     private func acquireLicense() async throws {
         guard let account else { return }
-        try await vm.withAccount(id: account.id) { userAccount in
-            try await ApplePackage.Authenticator.rotatePasswordToken(for: &userAccount.account)
-            try await ApplePackage.Purchase.purchase(
-                account: &userAccount.account,
-                app: archive.package.software,
-            )
+        if IPATool.isAvailable {
+            try await IPATool.purchase(account: account.requireIPAToolAccount(), package: archive.package)
+        } else {
+            try await vm.withAccount(id: account.id) { userAccount in
+                try await ApplePackage.Authenticator.rotatePasswordToken(for: &userAccount.account)
+                try await ApplePackage.Purchase.purchase(
+                    account: &userAccount.account,
+                    app: archive.package.software,
+                )
+            }
         }
         licenseHint = Hint(message: String(localized: "Request Succeeded"), color: .green)
     }

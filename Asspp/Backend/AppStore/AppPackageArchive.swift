@@ -98,11 +98,18 @@ class AppPackageArchive {
         Task {
             do {
                 let versions = try await AppStore.this.withAccount(id: accountIdentifier) { userAccount in
-                    try await StoreDownloadService.versions(account: &userAccount.account, package: requestedPackage)
+                    if IPATool.isAvailable {
+                        try await IPATool.versions(account: userAccount.requireIPAToolAccount(), package: requestedPackage)
+                    } else {
+                        try await StoreDownloadService.versions(account: &userAccount.account, package: requestedPackage)
+                    }
                 }
                 self.versionIdentifiers = versions.reversed()
             } catch {
                 if case .licenseRequired = error as? ApplePackageError {
+                    self.shouldDismiss = true
+                }
+                if error as? IPAToolError == .licenseRequired {
                     self.shouldDismiss = true
                 }
                 self.error = error.localizedDescription
@@ -125,7 +132,11 @@ class AppPackageArchive {
                     let requestedPackage = self.package
 
                     let metadata = try await AppStore.this.withAccount(id: accountIdentifier) { userAccount in
-                        try await StoreDownloadService.versionMetadata(account: &userAccount.account, package: requestedPackage, versionID: version)
+                        if IPATool.isAvailable {
+                            try await IPATool.versionMetadata(account: userAccount.requireIPAToolAccount(), package: requestedPackage, versionID: version)
+                        } else {
+                            try await StoreDownloadService.versionMetadata(account: &userAccount.account, package: requestedPackage, versionID: version)
+                        }
                     }
                     self.versionItems[version] = metadata
                 }
@@ -145,7 +156,11 @@ class AppPackageArchive {
             do {
                 let requestedPackage = self.package
                 let metadata = try await AppStore.this.withAccount(id: accountIdentifier) { userAccount in
-                    try await StoreDownloadService.versionMetadata(account: &userAccount.account, package: requestedPackage, versionID: versionID)
+                    if IPATool.isAvailable {
+                        try await IPATool.versionMetadata(account: userAccount.requireIPAToolAccount(), package: requestedPackage, versionID: versionID)
+                    } else {
+                        try await StoreDownloadService.versionMetadata(account: &userAccount.account, package: requestedPackage, versionID: versionID)
+                    }
                 }
                 self.versionItems[versionID] = metadata
             } catch {

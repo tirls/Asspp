@@ -84,12 +84,15 @@ struct AddAccountView: View {
                     defer { isAuthenticating = false }
                     logger.info("starting authentication for user")
                     do {
-                        let session: ApplePackage.Authenticator
-                        if let authenticator {
-                            session = authenticator
-                        } else {
-                            session = try await ApplePackage.Authenticator()
-                            authenticator = session
+                        // ipatool keeps its own per-account session across code attempts.
+                        var session: ApplePackage.Authenticator?
+                        if !IPATool.isAvailable {
+                            if let authenticator {
+                                session = authenticator
+                            } else {
+                                session = try await ApplePackage.Authenticator()
+                                authenticator = session
+                            }
                         }
                         _ = try await vm.authenticate(email: email, password: password, code: code, using: session)
                         logger.info("authentication successful for user")
@@ -98,6 +101,9 @@ struct AddAccountView: View {
                         logger.error("authentication failed: \(error.localizedDescription)")
                         self.error = error
                         if case ApplePackage.AuthenticationError.verificationCodeRequired = error {
+                            codeRequired = true
+                        }
+                        if error as? IPAToolError == .authCodeRequired {
                             codeRequired = true
                         }
                         throw error
