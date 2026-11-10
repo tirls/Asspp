@@ -29,7 +29,7 @@ import (
 func main() {}
 
 func init() {
-	assets.SetProgressHandler(logf)
+	assets.SetProgressHandler(func(line string) { logf("%s", line) })
 	appstore.AssppDiagnostics = func(line string) { logf("%s", redact(line)) }
 }
 
