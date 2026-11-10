@@ -71,6 +71,17 @@ patch_function internal/sap/assets/http_range.go \
     "func (r *remoteFile) ReadAt(data []byte, offset int64) (int, error) {" \
     "func (r *remoteFile) readAtDirect(data []byte, offset int64) (int, error) {"
 
+# Record why the preferred ent/download attempt fell back and what volumeStore
+# returned; ipatool otherwise swallows both before trying redownload.
+ENT_FALLBACK=$'\t\t\t\tif err == nil {\n\t\t\t\t\treturn res, resolvedPlatform, nil\n\t\t\t\t}\n'
+patch_function pkg/appstore/appstore_download_product.go \
+    "$ENT_FALLBACK" \
+    "$ENT_FALLBACK"$'\t\t\t\tassppDiagnose("ent/download fell back: %v", err)\n'
+VOLUME_CHECK=$'\tif !isEmptyDownloadProductResponse(res) && !isUnavailableDownloadProductResponse(res) {\n'
+patch_function pkg/appstore/appstore_download_product.go \
+    "$VOLUME_CHECK" \
+    $'\tassppDiagnose("volumeStore: HTTP %d, failureType=%q, items=%d", res.StatusCode, res.Data.FailureType, len(res.Data.Items))\n'"$VOLUME_CHECK"
+
 echo "[*] preparing Unicorn TCI $UNICORN_REVISION"
 UNICORN_ARCHIVE="$WORK/unicorn-$UNICORN_REVISION.tar.gz"
 UNICORN_SOURCE="$WORK/unicorn-$UNICORN_REVISION"

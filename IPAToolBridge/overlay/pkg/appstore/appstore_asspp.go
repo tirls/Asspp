@@ -11,6 +11,15 @@ import (
 	"strings"
 )
 
+// AssppDiagnostics receives diagnostic lines from the patched download chain.
+var AssppDiagnostics func(string)
+
+func assppDiagnose(format string, arguments ...interface{}) {
+	if handler := AssppDiagnostics; handler != nil {
+		handler(fmt.Sprintf(format, arguments...))
+	}
+}
+
 // ResolvedDownload is the package location and licensing data for one app version.
 type ResolvedDownload struct {
 	URL      string

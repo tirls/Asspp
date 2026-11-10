@@ -16,6 +16,8 @@ library instead of porting that code.
 | `IPAToolBridge/overlay/pkg/appstore/appstore_asspp.go` | Copied into ipatool. `ResolveDownload` runs ipatool's download request chain and returns the package URL, sinfs and metadata without transferring the IPA. |
 | `IPAToolBridge/overlay/asspp/bridge/` | Copied into ipatool. cgo exports `AssppIPAToolCall`, `AssppIPAToolCancel`, `AssppIPAToolFree` (JSON in, JSON out). One ipatool session per account, state under Application Support. |
 | `Resources/Scripts/build.ipatool.sh` | Fetches the pinned ipatool and Unicorn revisions, builds Unicorn's TCI interpreter (AArch64 guest, no JIT) and the Go c-archive for `iphoneos`, and writes `Configuration/IPATool.generated.xcconfig`. |
+| `IPAToolBridge/overlay/pkg/appstore/appstore_asspp_storefronts.go` | Seeds ipatool v2.8.0's storefront table. Later ipatool requests `availableStoreFronts` through the emulated Store client, which returns non-200 on iOS and breaks redownload. |
+| `IPAToolBridge/overlay/internal/sap/assets/asspp_overlay.go` | Chunked (1 MB) restore-image reads, memoized `assets.Load`, first-use progress. `build.ipatool.sh` renames the wrapped ipatool functions and inserts two diagnostics in the download chain; it fails if those sources changed. |
 | `Asspp/Backend/AppStore/IPATool.swift` | Swift wrapper. Compiled against the bridge only when `ASSPP_IPATOOL` is defined by the generated xcconfig. |
 
 Builds without the bridge (simulator, macOS, or a checkout where the script did not run) keep

@@ -23,12 +23,14 @@ import (
 	"unsafe"
 
 	"github.com/majd/ipatool/v2/internal/sap/assets"
+	"github.com/majd/ipatool/v2/pkg/appstore"
 )
 
 func main() {}
 
 func init() {
 	assets.SetProgressHandler(logf)
+	appstore.AssppDiagnostics = func(line string) { logf("%s", redact(line)) }
 }
 
 const logLimit = 200

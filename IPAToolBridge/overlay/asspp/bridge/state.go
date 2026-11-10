@@ -140,6 +140,8 @@ func sessionFor(email string) (*session, error) {
 		}),
 		jar: jar,
 	}
+	// The dynamic availableStoreFronts request fails on iOS; see the overlay.
+	appstore.SeedStorefronts(created.store)
 	sessions[key] = created
 
 	return created, nil
