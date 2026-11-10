@@ -16,6 +16,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"regexp"
 	"strings"
 	"sync"
 	"time"
@@ -161,7 +162,7 @@ func call(operation string, request []byte) (output string) {
 	if operation != "configure" {
 		status := "ok"
 		if err != nil {
-			status = classify(err).Code
+			status = classify(err).Code + ": " + redact(err.Error())
 		}
 
 		logf("%s finished in %s (%s)", operation, time.Since(started).Round(100*time.Millisecond), status)
@@ -176,6 +177,34 @@ func call(operation string, request []byte) (output string) {
 	}
 
 	return encode(response{OK: true, Result: result})
+}
+
+var (
+	redactURL    = regexp.MustCompile(`https?://[^\s"']+`)
+	redactEmail  = regexp.MustCompile(`[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}`)
+	redactNumber = regexp.MustCompile(`\d{7,}`)
+	redactToken  = regexp.MustCompile(`[A-Za-z0-9+/=_-]{32,}`)
+)
+
+// redact keeps error chains readable in the log while removing values that
+// can identify an account: addresses, URLs (hosts kept), long identifiers.
+func redact(message string) string {
+	message = redactURL.ReplaceAllStringFunc(message, func(raw string) string {
+		if index := strings.IndexAny(raw, "?#"); index >= 0 {
+			raw = raw[:index] + "?…"
+		}
+
+		return raw
+	})
+	message = redactEmail.ReplaceAllString(message, "<email>")
+	message = redactNumber.ReplaceAllString(message, "<number>")
+	message = redactToken.ReplaceAllString(message, "<token>")
+
+	if len(message) > 600 {
+		message = message[:600] + "…"
+	}
+
+	return message
 }
 
 func encode(value response) string {
